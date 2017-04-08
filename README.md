@@ -1,4 +1,5 @@
 <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML" type="text/javascript"></script>
+[back to main page] (https://michael-hoffman.github.io)
 # Bayesian Model Evaluation and Comparison
 ## SPS Modeling of Compact Dwarf Galaxies
 
@@ -283,4 +284,13 @@ To select dwarf galaxies from the RESOLVE dataset, we use the following criteria
 (This is the threshold scale and was recommended by Dr. Kannappan in a private correspondence.)
 
 Now, our DataFrame is reduced to only the columns we need: eight magnitudes and their uncertainties, as well as `name`, `logmstar`, and `grpcz`.
+
+```python
+# Select the dwarf galaxies.
+resolve = resolve_data[(resolve_data['logmstar'] < 9.5)]
+
+print 'Number of galaxies in RESOLVE matching our dwarf galaxy criterion: ', resolve.shape[0]
+```
+
+    Number of galaxies in RESOLVE matching our dwarf galaxy criterion:  1657
 
