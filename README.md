@@ -21,7 +21,7 @@ investigate how these compare with observed data for dwarf galaxies in the
 RESOLVE survey.  We will determine the likelihood of models from BPASS by
 comparing broadband magnitudes to those from RESOLVE using a Bayesian approach,
 resulting in estimates of various parameters (age, metallicity, binary fraction,
-\$$f_{MBBH}$$ after marginalization. We will also provide galaxy mass estimates
+$$f_{MBBH}$$ after marginalization. We will also provide galaxy mass estimates
 using a method mirroring the one used in the RESOLVE survey. Through careful
 analysis of our results, we hope to determine how significant a role binary
 stars play in the evolution of dwarf galaxies, thereby telling us where to point
@@ -133,7 +133,7 @@ resolve_data.head()
 To select dwarf galaxies from the RESOLVE dataset, we use the following
 criteria:
 
-* Galaxy stellar mass less than $10^{9.5} M_{\odot}$ (`logmstar` < 9.5)
+* Galaxy stellar mass less than $$10^{9.5} M_{\odot}$$ (`logmstar` < 9.5)
 
 (This is the threshold scale and was recommended by Dr. Kannappan in a private
 correspondence.)
@@ -202,21 +202,21 @@ DataFrame.
 ### (1.2a) Model Parameters
 
 We have three parameters from BPASS that characterize each model:
-- Age: $1$ Myr ($10^6$ years) to $10$ Gyr ($10^{10}$ years) on a logarithmic
+- Age: $$1$$ Myr ($$10^6$$ years) to $$10$$ Gyr ($$10^{10}$$ years) on a logarithmic
 scale
     - Stored as `log(Age)`, ranging from 6.0 to 10.0.
-- Metallicity: $Z = 0.001, 0.002, 0.003, 0.004, 0.006, 0.008, 0.010, 0.014,
-0.020, 0.030, 0.040$
+- Metallicity: $$Z = 0.001, 0.002, 0.003, 0.004, 0.006, 0.008, 0.010, 0.014,
+0.020, 0.030, 0.040$$
     - Stored as: `Metallicity`
-- IMF Slopes (for ranges of $M_{*}$ in units of $M_{\odot}$):
-    - $0.1 < M_{\textrm{galaxy}} < 0.5$: $-1.30, -2.35$
+- IMF Slopes (for ranges of $$M_{*}$$ in units of $$M_{\odot}$$):
+    - $$0.1 < M_{\textrm{galaxy}} < 0.5$$: $$-1.30, -2.35$$
         - Stored as: `IMF (0.1-0.5)`
-    - $0.5 < M_{\textrm{galaxy}} < 100$: $-2.0, -2.35, -2.70$
+    - $$0.5 < M_{\textrm{galaxy}} < 100$$: $$-2.0, -2.35, -2.70$$
         - Stored as: `IMF (0.5-100)`
-    - $100 < M_{\textrm{galaxy}} < 300$: $0.0, -2.0, -2.35, -2.70$
+    - $$100 < M_{\textrm{galaxy}} < 300$$: $$0.0, -2.0, -2.35, -2.70$$
         - Stored as: `IMF (100-300)`
 
-We will also be calculating a fourth parameter, $f_{MBBH}$, to go along with
+We will also be calculating a fourth parameter, $$f_{MBBH}$$, to go along with
 each model, which we will discuss in further detail below.
 
 ```python
@@ -228,7 +228,7 @@ initial mass functions most closely resemble `Kroupa01`, in that we have three
 linear functions that are defined over different mass ranges and stitched
 together at the boundaries of each interval. We believe this to be a practical
 choice of IMF, and it is simple to integrate later on in the code to determine
-$f_{MBBH}$.
+$$f_{MBBH}$$.
 
 **Note: The BPASS models that we use contain a single simple stellar
 population** (delta-function burst in star formation at time zero). We predict
@@ -236,7 +236,7 @@ that this will limit the degree to which the models match the observed data, and
 we believe incorporating models with continuous star formation (which are
 available from BPASS) represents an area of further study.
 
-*Note: We will also be calculating a fourth parameter, $f_{MBBH}$, to go along
+*Note: We will also be calculating a fourth parameter, $$f_{MBBH}$$, to go along
 with each model, which we will discuss in further detail below.*
 
 *Due to the nature of the data (there are many BPASS data files placed in a set
@@ -314,11 +314,11 @@ For each model under consideration, we have *four* parameters that provide us
 with our model grid for BPASS:
 - Age
 - Metallicity
-- IMF Slopes (proxy for $f_{MBBH}$)
-- $\alpha$ (binary fraction) : $0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8,
-0.9, 1.0$
-    - We mix the BPASS models in a manner such that $\alpha$ of our population
-is binary stars, while $(1-\alpha)$
+- IMF Slopes (proxy for $$f_{MBBH}$$)
+- $$\alpha$$ (binary fraction) : $$0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8,
+0.9, 1.0$$
+    - We mix the BPASS models in a manner such that $$\alpha$$ of our population
+is binary stars, while $$(1-\alpha)$$
       is single stars.
 
 ```python
@@ -335,12 +335,12 @@ Each combination of these parameters defines a unique model with a set of model
 magnitudes. We must first scale these values to put ourselves on the same
 footing as our RESOLVE galaxies, with the normalization providing an estimate of
 the galaxy mass. Before we do, however, we will discuss how we compute
-$f_{MMBH}$.
+$$f_{MMBH}$$.
 
 ## (2.1) Fraction of Massive Binary Black Holes
 
 The fundamental science question that we address in this project pertains to the
-fraction of massive binary black holes in dwarf galaxies ($f_{MBBH}$) that would
+fraction of massive binary black holes in dwarf galaxies ($$f_{MBBH}$$) that would
 be massive enough to emit gravitational waves that could be detected by Earth-
 based gravitational wave detectors. For each model, we can calculate this
 parameter using the BPASS initial mass functions and alpha parameter.  
@@ -357,20 +357,20 @@ IMF(M_*) =
    \end{cases},
 $$
 
-where $(a,b,c)$ are the IMF slopes in the corresponding intervals (provided by
-BPASS) and $(C_1,C_2,C_3)$ are unknown constants.  
+where $$(a,b,c)$$ are the IMF slopes in the corresponding intervals (provided by
+BPASS) and $$(C_1,C_2,C_3)$$ are unknown constants.  
 
-Making use of the mass normalization condition (all IMFs are normalized to $10^6
-M_{\odot}$) and boundary conditions, we are able to solve for the unknown
+Making use of the mass normalization condition (all IMFs are normalized to $$10^6
+M_{\odot}$$) and boundary conditions, we are able to solve for the unknown
 constants. Once the system is solved, we can integrate the first moment of the
-IMF from $90M_{\odot}$ (progenitor cutoff is from Belczynski et al.) to
-$300M_{\odot}$ in order to find the fraction of (potential) massive binary black
-holes in our binary star population. To find $f_{MBBH}$ (which is the fraction
+IMF from $$90M_{\odot}$$ (progenitor cutoff is from Belczynski et al.) to
+$$300M_{\odot}$$ in order to find the fraction of (potential) massive binary black
+holes in our binary star population. To find $$f_{MBBH}$$ (which is the fraction
 of massive binary black holes in the *total* population), we merely multiply the
 result from evaluating the integral under the curve by the binary fraction,
-$\alpha$.  
+$$\alpha$$.  
 
-In summary, we walk away with $f_{MBBH}$ for each unique combination of IMF
+In summary, we walk away with $$f_{MBBH}$$ for each unique combination of IMF
 slopes and alpha (70).
 
 ```python
@@ -408,8 +408,8 @@ def fbin_calc(alpha, a, b, c):
 
 ## (2.2) Normalization and Chi-Squared
 - BPASS models are based on instantaneous formation of stars with a total mass
-of $10^6 M_{\odot}$.
-- Since galaxies in RESOLVE contain far more mass than $10^6 M_{\odot}$, we must
+of $$10^6 M_{\odot}$$.
+- Since galaxies in RESOLVE contain far more mass than $$10^6 M_{\odot}$$, we must
 normalize. To do so, we assume that the uncertainties on the model magnitudes
 are Poissonian when converted to fluxes, then perform the normalization in flux
 units (this is the natural linear scale for light output).
@@ -424,23 +424,23 @@ lfluxs = 10**(-0.4*(gmags-errs))
 errs = 0.5*(hfluxs - lfluxs)
 ```
 
-We define the normalization to be the scale factor that minimizes ${\chi}^2$,
-where ${x_i}$ are the model fluxes, ${d_i}$ are the observed (RESOLVE) fluxes,
-${\epsilon_i}$ are the observed (RESOLVE) uncertainties, and $i$ is the band
+We define the normalization to be the scale factor that minimizes $${\chi}^2$$,
+where $${x_i}$$ are the model fluxes, $${d_i}$$ are the observed (RESOLVE) fluxes,
+$${\epsilon_i}$$ are the observed (RESOLVE) uncertainties, and $$i$$ is the band
 index. We display the result below:
 
 $$c = \frac{\sum{\frac{x_i
 d_i}{\epsilon_i^2}}}{\sum{\frac{x_i^2}{\epsilon_i^2}}} $$
 
-- After normalizing the model fluxes with this factor, we compute ${\chi}^2$
+- After normalizing the model fluxes with this factor, we compute $${\chi}^2$$
 using normalized model magnitudes and observed magnitudes (with uncertainties)
 for each model.
-- We later use ${\chi}^2$ to determine the posterior probability of each model
+- We later use $${\chi}^2$$ to determine the posterior probability of each model
 for a given galaxy.
 
 *The code for carrying out this process takes a bit of a long time to run, so we
 have extracted another block of code from our pipeline to demonstrate how we
-compute normalizations and ${\chi}^2$ values.*
+compute normalizations and $${\chi}^2$$ values.*
 
 ```python
 # store useful strings in arrays for later
@@ -568,7 +568,7 @@ bpass.head()
 ## (2.3) Galaxy-Specific Calculations
 
 With the models defined, we can compute from the normalizations an estimate for
-$M_*$, $\alpha$, metallicity, and age for each galaxy. In order to compare to
+$$M_*$$, $$\alpha$$, metallicity, and age for each galaxy. In order to compare to
 the RESOLVE mass for each galaxy, we compute the median (as done by previous
 works, Kannappan and Gawiser 2007) and the median weighted by the likelihood of
 each model (new approach?).
@@ -692,7 +692,7 @@ We have computed the percent difference between `logmstar` in RESOLVE and our
 weighted median calculation for all galaxies. We see the largest difference is
 17%, but this is in a small tail of the distribution (if centered on zero),
 suggesting good agreement with RESOLVE. Results for age and metallicity are also
-as expected. **For the fraction of binaries, $\alpha$, we see a narrow band
+as expected. **For the fraction of binaries, $$\alpha$$, we see a narrow band
 centered around 40%.** This is an encouraging result, as it has been estimated
 that up to 70% of stars may be participating in binary interactions. Therefore,
 these models suggest SPS models would better fit galaxy spectra with a
@@ -825,7 +825,7 @@ plt.plot(mass_plot[:,0], f, '-')
 
 To further investigate our fundamental question, we explored how our galaxy
 parameters behave as a function of the binary fraction (as opposed to
-$f_{MBBH}$). To do so, we chose three dwarf galaxies with different mass
+$$f_{MBBH}$$). To do so, we chose three dwarf galaxies with different mass
 estimates from RESOLVE to capture what we felt was a representative (albeit
 small) picture of how our code runs for the entire sample.
 
@@ -948,7 +948,7 @@ metallicities provided by BPASS.
 fractions that we test.
     - Note: Since this is just one, we do not include it explicitly below.
 
-Our prior distribution is given below, where $\{{\theta}_i\}$ represents our set
+Our prior distribution is given below, where $$\{{\theta}_i\}$$ represents our set
 of model parameters.
 
 $$p\left(\{{\theta}_i\}\right) = \frac{1}{\textrm{log(age) range}}
@@ -966,8 +966,8 @@ e^{-{\chi}^2 / 2}$$
 $${\chi}^2 = \sum \frac{\left(f_{\textrm{R},i} -
 f_{\textrm{B},i}\right)^2}{{{\sigma}_{\textrm{R},i}}^2},$$
 
-where $f_{\textrm{B},i}$ are the normalized BPASS fluxes, $f_{\textrm{R},i}$ are
-the RESOLVE fluxes, and ${\sigma}_{\textrm{R},i}$ are the RESOLVE flux
+where $$f_{\textrm{B},i}$$ are the normalized BPASS fluxes, $$f_{\textrm{R},i}$$ are
+the RESOLVE fluxes, and $${\sigma}_{\textrm{R},i}$$ are the RESOLVE flux
 uncertainties.
 
 ### (2.4c) Marginalization
@@ -1118,7 +1118,7 @@ much to blow up our parameter space). Without needing to perform calculations on
 the entire dataset, we explore three methods for sampling from our posterior.
 The goal of this sampling is to identify areas of interest in our parameter
 space and determine the expected distribution of the massive binary black hole
-fraction, $f_{MBBH}$, for individual galaxies.
+fraction, $$f_{MBBH}$$, for individual galaxies.
 
 *Note: Due to the coarse nature of our model grid, our sampling algorithm had a
 relatively small parameter space to explore. Nevertheless, we hope to
@@ -1136,7 +1136,7 @@ are mostly featureless.
 
 For each method, we generate a corner plot for the three parameters we are most
 interested in and display the median value and 16th/84th percentile values for
-each. We also plot a histogram of the calculated $f_{MBBH}$ values.
+each. We also plot a histogram of the calculated $$f_{MBBH}$$ values.
 
 ```python
 # Define values to randomly sample
@@ -1616,16 +1616,16 @@ chain = nuts.sample(10100, burn=100)
 ## 4. Fraction of Massive Binary Black Holes
 
 Returning to our original science question, we will run some code to get an idea
-of the most popular value of $f_{MBBH}$ for the dwarf galaxies in our sample. In
-essence, we will compute $f_{MMBH}$ for every galaxy/model pair, then select the
+of the most popular value of $$f_{MBBH}$$ for the dwarf galaxies in our sample. In
+essence, we will compute $$f_{MMBH}$$ for every galaxy/model pair, then select the
 "best one" as the one that maximizes the posterior probability.
 
 *Note: We know that making a point estimate is a cardinal sin in Bayesian
 analysis, but we did those for the sake of computational efficiency/time. We
 believe that the proper thing to do would be to store the full posterior
-distribution for $f_{MBBH}$ for each galaxy after marginalization over
+distribution for $$f_{MBBH}$$ for each galaxy after marginalization over
 metallicity, and then "stack" the posteriors to capture the distribution of
-$f_{MBBH}$ for all dwarf galaxies in RESOLVE.*
+$$f_{MBBH}$$ for all dwarf galaxies in RESOLVE.*
 
 ```python
 # Load RESOLVE data.
@@ -1771,7 +1771,7 @@ reported earlier this year.
 when compared to those from the RESOLVE catalog (calculated using Bruzual-
 Charlot SPS models).
 2. We have shown that model parameters behave smoothly as a function of binary
-fraction, $\alpha$. In general, the model predicts a larger galaxy mass for
+fraction, $$\alpha$$. In general, the model predicts a larger galaxy mass for
 larger binary fractions.
 3. Our work with the binary fraction indicates that binary star populations are
 important for characterizing dwarf galaxies (47% of total stellar population is
@@ -1779,7 +1779,7 @@ in binaries). This would indicate that it is favorable for finding LIGO-like
 progenitors, if only because we expect a significant number of binaries.
 4. The model also points to metallicities in the neighborhood of 0.013, which is
 thought to be too large for the formation of LIGO like progenitors (for
-comparison, $Z_{\odot} = 0.0134$).
+comparison, $$Z_{\odot} = 0.0134$$).
 5. Our model, when extended across all galaxies, suggests that the most likely
 fraction of massive binary black progenitors that could lead to a LIGO-like
 event is at or below 0.1%. Such a low number is expected; however, our results
@@ -1797,7 +1797,7 @@ BPASS models.
 component of our final analysis, but it would be interesting to see how well
 each can do on a large parameter space (even if it remains a discrete grid of
 parameters).
-4. Use a more rigorous method to find the distribution of $f_{MBBH}$
+4. Use a more rigorous method to find the distribution of $$f_{MBBH}$$
 (marginalization, combining individual distributions).
 
 ## 6. References
