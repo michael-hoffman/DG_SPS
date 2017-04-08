@@ -276,6 +276,11 @@ resolve_data.head()
 </table>
 </div>
 
-To select dwarf galaxies from the RESOLVE dataset, we use the following
-criteria:
+To select dwarf galaxies from the RESOLVE dataset, we use the following criteria:
+
+* Galaxy stellar mass less than \\(10^{9.5} M_{\odot}\\) (`logmstar` < 9.5)
+
+(This is the threshold scale and was recommended by Dr. Kannappan in a private correspondence.)
+
+Now, our DataFrame is reduced to only the columns we need: eight magnitudes and their uncertainties, as well as `name`, `logmstar`, and `grpcz`.
 
