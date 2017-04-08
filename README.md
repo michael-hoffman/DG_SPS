@@ -21,8 +21,7 @@ investigate how these compare with observed data for dwarf galaxies in the
 RESOLVE survey.  We will determine the likelihood of models from BPASS by
 comparing broadband magnitudes to those from RESOLVE using a Bayesian approach,
 resulting in estimates of various parameters (age, metallicity, binary fraction,
-$$f_{MBBH}$$ after marginalization. We will also provide galaxy mass estimates
-using a method mirroring the one used in the RESOLVE survey. Through careful
+$$f_{MBBH}$$ after marginalization. We will also provide galaxy mass estimates using a method mirroring the one used in the RESOLVE survey. Through careful
 analysis of our results, we hope to determine how significant a role binary
 stars play in the evolution of dwarf galaxies, thereby telling us where to point
 (or not to point) our gravitational wave detectors in the future!
