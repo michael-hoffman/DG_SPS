@@ -25,16 +25,11 @@ analysis of our results, we hope to determine how significant a role binary
 stars play in the evolution of dwarf galaxies, thereby telling us where to point
 (or not to point) our gravitational wave detectors in the future!
 
+
 ### Acknowledgements
-- Dr. Sheila Kannappan (Primary Instructor)
-- Rohan Isaac (Teaching Assistant)
+Conversion from SPS model fluxes to broadband magnitudes heavily based on IDL code provided by S. Kannappan.
 
-### Code Acknowledgements
-Conversion from SPS model fluxes to broadband magnitudes heavily based on IDL
-code provided by S. Kannappan.
-
-The project members would also like to acknowledge those who created/maintain
-numpy, pandas, and any other python packages used in this code.
+The project members would also like to acknowledge those who created/maintain numpy, pandas, and any other python packages used in this code.
 
 ### Databases
 1. RESOLVE: Eckert et al., *Astrophysical Journal*, 810, 166 (2015).
