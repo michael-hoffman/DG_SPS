@@ -25,4 +25,3 @@ using a method mirroring the one used in the RESOLVE survey. Through careful
 analysis of our results, we hope to determine how significant a role binary
 stars play in the evolution of dwarf galaxies, thereby telling us where to point
 (or not to point) our gravitational wave detectors in the future!
-
