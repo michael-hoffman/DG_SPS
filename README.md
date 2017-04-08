@@ -36,18 +36,18 @@ The project members would also like to acknowledge those who created/maintain nu
 2. BPASSv2: Stanway et al., *Monthly Notices of the Royal Astronomical Society*,
 456, 485 (2015).
    BPASSv1: Eldridge & Stanway, *Monthly Notices of the Royal Astronomical
-Society*, 400, 1019 (2009). <br/>
+Society*, 400, 1019 (2009).  
    *The project members would also like to acknowledge NeSI Pan Cluster, where
 the code for BPASS was run.*
 
 ### Table of Contents
-1. Loading the Data <br/>
-   (1.1) RESOLVE Data <br/>
+1. Loading the Data  
+   (1.1) RESOLVE Data  
    (1.2) BPASS (Binary Population and Spectral Synthesis Code) Data
        (1.2a) Model Parameters
-2. Model Calculations <br/>
-   (2.1) Fraction of Massive Binary Black Holes <br/>
-   (2.2) Normalization and Chi-Squared <br/>
+2. Model Calculations  
+   (2.1) Fraction of Massive Binary Black Holes  
+   (2.2) Normalization and Chi-Squared  
    (2.3) Galaxy-Specific Calculations
        (2.3a) Computing the Model-Weighted Parameters for Each Galaxy
        (2.3b) Mass Comparison with RESOLVE
@@ -57,12 +57,12 @@ the code for BPASS was run.*
        (2.4a) Priors
        (2.4b) Likelihood Function
        (2.4c) Marginalization
-3. Method Comparison <br/>
-   (3.1) Simple Random Sampling <br/>
-   (3.2) Metropolis-Hastings Algorithm <br/>
-   (3.3) Slice Sampling and NUTS (Failures) <br/>
-4. Fraction of Massive Binary Black Holes <br/>
-5. Discussion of Results <br/>
+3. Method Comparison  
+   (3.1) Simple Random Sampling  
+   (3.2) Metropolis-Hastings Algorithm  
+   (3.3) Slice Sampling and NUTS (Failures)  
+4. Fraction of Massive Binary Black Holes  
+5. Discussion of Results  
 6. References
 
 # 1. Loading the Data
@@ -149,7 +149,7 @@ print 'Number of galaxies in RESOLVE matching our dwarf galaxy criterion: ', res
 Missing photometric data in RESOLVE is indicated by `-99`. Since we do not wish
 to include these values in our subsequent data analysis, we treat them by
 ignoring all instances of `-99`. We also exclude data from these bands when
-comparing to our BPASS model fluxes. <br/>
+comparing to our BPASS model fluxes.  
 
 *We perform this process externally, but the relevant code has been extracted
 from our pipeline and is shown below.*
@@ -195,7 +195,7 @@ have to mix the two on your own.
 proportions.
 
 We read in all of the data from the BPASS models and store it as a pandas
-DataFrame. <br/>
+DataFrame.  
 
 ### (1.2a) Model Parameters
 
@@ -341,7 +341,7 @@ The fundamental science question that we address in this project pertains to the
 fraction of massive binary black holes in dwarf galaxies ($f_{MBBH}$) that would
 be massive enough to emit gravitational waves that could be detected by Earth-
 based gravitational wave detectors. For each model, we can calculate this
-parameter using the BPASS initial mass functions and alpha parameter. <br/>
+parameter using the BPASS initial mass functions and alpha parameter.  
 
 We define the following piecewise function for the initial mass functions from
 BPASS:
@@ -356,7 +356,7 @@ IMF(M_*) =
 $$
 
 where $(a,b,c)$ are the IMF slopes in the corresponding intervals (provided by
-BPASS) and $(C_1,C_2,C_3)$ are unknown constants. <br/>
+BPASS) and $(C_1,C_2,C_3)$ are unknown constants.  
 
 Making use of the mass normalization condition (all IMFs are normalized to $10^6
 M_{\odot}$) and boundary conditions, we are able to solve for the unknown
@@ -366,7 +366,7 @@ $300M_{\odot}$ in order to find the fraction of (potential) massive binary black
 holes in our binary star population. To find $f_{MBBH}$ (which is the fraction
 of massive binary black holes in the *total* population), we merely multiply the
 result from evaluating the integral under the curve by the binary fraction,
-$\alpha$. <br/>
+$\alpha$.  
 
 In summary, we walk away with $f_{MBBH}$ for each unique combination of IMF
 slopes and alpha (70).
@@ -694,7 +694,7 @@ as expected. **For the fraction of binaries, $\alpha$, we see a narrow band
 centered around 40%.** This is an encouraging result, as it has been estimated
 that up to 70% of stars may be participating in binary interactions. Therefore,
 these models suggest SPS models would better fit galaxy spectra with a
-significant fraction of binary stars. <br/>
+significant fraction of binary stars.  
 
 In exploring our data, we noticed that as the fraction of binary stars was
 increased, estimates for galaxy mass tended to increase as well. Eldridge and
@@ -959,7 +959,7 @@ on the chi-squared distribution, as discussed previously. Therefore, our
 likelihood function is of the form:
 
 $$L\left( f_{\textrm{B},i}, f_{\textrm{R},i}, {\sigma}_{\textrm{R},i} \right) =
-e^{-{\chi}^2 / 2}$$ <br/>
+e^{-{\chi}^2 / 2}$$  
 
 $${\chi}^2 = \sum \frac{\left(f_{\textrm{R},i} -
 f_{\textrm{B},i}\right)^2}{{{\sigma}_{\textrm{R},i}}^2},$$
@@ -1501,7 +1501,7 @@ Image("fbin_rf0044.png")
 
 As a third and fourth sampling method, we chose to explore slice sampling and
 the No-U-Turn-Sampler (Hoffman & Gelman, 2014). Both of these are said to have
-advantages over traditional Metropolis-Hastings, namely: <br/>
+advantages over traditional Metropolis-Hastings, namely:  
 
 #### Slice Sampling
 - Best described as uniform sampling that takes into account the shape of the
@@ -1524,7 +1524,7 @@ library known as Sampyl (http://matatat.org/sampyl/index.html), which contains a
 suite of MCMC samplers in Python. The advantage of using Sampyl (instead of
 something like PyStan or emcee, which also did not work) is that the user does
 not need to learn any new syntax to use it - all that is needed is the log-
-posterior distribution and model parameters. <br/>
+posterior distribution and model parameters.  
 
 In the context of our problem, however, neither of these methods worked with the
 Sampyl samplers. The crux of the issue stemmed from our discrete parameter space
@@ -1801,16 +1801,16 @@ parameters).
 ## 6. References
 
 [1] Eldridge, J.J., Izzard, R.G., and C.A. Tout. MNRAS, Volume 384, Issue 3,
-1109-1118 (2008). <br/>
+1109-1118 (2008).  
 [2] Eldridge, J.J. and E.R. Stanway. MNRAS, Volume 400, Issue 2, 1019-1028
-(2009). <br/>
+(2009).  
 [3] Eldridge, J.J. and E.R. Stanway. MNRAS, Volume 462, Issue 3, 3302-3313
-(2016). <br/>
+(2016).  
 [4] B. P. Abbott et al. (LIGO Scientific Collaboration and Virgo Collaboration),
-Phys. Rev. Lett. 116, 061102 (2016). <br/>
-[5] RESOLVE: Eckert et al., Astrophysical Journal, 810, 166 (2015). <br/>
-[6] Belczynski et al., Nature 534, 512–515 (2016) <br/>
+Phys. Rev. Lett. 116, 061102 (2016).  
+[5] RESOLVE: Eckert et al., Astrophysical Journal, 810, 166 (2015).  
+[6] Belczynski et al., Nature 534, 512–515 (2016)  
 [7] Hoffman, M.D. and A. Gelman, Journal of Machine Learning Research 15,
-1351-1381 (2014). <br/>
+1351-1381 (2014).  
 
 Initial Mass Function Image by JohannesBuchner - Own work, CC BY-SA 4.0, Link
