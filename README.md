@@ -1,3 +1,4 @@
+<script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML" type="text/javascript"></script>
 # Bayesian Model Evaluation and Comparison
 ## SPS Modeling of Compact Dwarf Galaxies
 
@@ -23,3 +24,9 @@ using a method mirroring the one used in the RESOLVE survey. Through careful
 analysis of our results, we hope to determine how significant a role binary
 stars play in the evolution of dwarf galaxies, thereby telling us where to point
 (or not to point) our gravitational wave detectors in the future!
+
+This is an inline equation test \\( 1/x^2 \\). It is illuminating. Below is a standalone equation.
+
+$$
+E = m c^2
+$$
