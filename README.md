@@ -347,3 +347,74 @@ We have three parameters from BPASS that characterize each model:
         - Stored as: `IMF (100-300)`
                 
 We will also be calculating a fourth parameter, \\(f_{MBBH}\\), to go along with each model, which we will discuss in further detail below. 
+
+![IMF](DG_SPSv4_files/DG_SPSv4_10_0.png)
+
+
+
+The image above shows a number of popular initial mass functions. The BPASS initial mass functions most closely resemble `Kroupa01`, in that we have three linear functions that are defined over different mass ranges and stitched together at the boundaries of each interval. We believe this to be a practical choice of IMF, and it is simple to integrate later on in the code to determine $f_{MBBH}$.  
+
+**Note: The BPASS models that we use contain a single simple stellar population** (delta-function burst in star formation at time zero). We predict that this will limit the degree to which the models match the observed data, and we believe incorporating models with continuous star formation (which are available from BPASS) represents an area of further study.  
+
+*Due to the nature of the data (there are many BPASS data files placed in a set of seven folders), we perform this process externally and pickle the resulting DataFrame. For the interested members of the audience, the data files may be found under "BROAD-BAND COLOURS - UBVRIJHKugriz" at http://bpass.auckland.ac.nz/2.html. Locally, we have stored these files in our `DataRepo` folder.* 
+
+```python
+# ind: number of IMF slope combinations (number of blue links on BPASS website)
+for i in range(len(ind)):
+        
+    os.chdir('/afs/cas.unc.edu/classes/fall2016/astr_703_001/bonfield/group_project/
+              BPASS_mags/BPASSv2_'+ind[i]+'/OUTPUT_POP/'+key+'/')
+    # print os.getcwd()     # check that we are moving through directories
+        
+    dat_files = glob.glob('*.dat')
+    mod1,mod2,mod3,mod4,mod5,mod6,mod7 = [],[],[],[],[],[],[]
+    df_sub = [mod1, mod2, mod3, mod4, mod5, mod6, mod7]
+    df1,df2,df3,df4,df5,df6,df7,df8,df9,df10,df11 = [],[],[],[],[],[],[],[],[],[],[]
+    df_arr = [df1, df2, df3, df4, df5, df6, df7, df8, df9, df10, df11]
+        
+    df_sub[i] = pd.DataFrame()
+    
+    for j in range(len(dat_files)):
+            
+        bpass = np.genfromtxt(dat_files[j],delimiter='',dtype=float)
+        # pull out metallicity from data file name (start/stop are index positions)
+        if key == 'binary':
+            start = 13
+            stop = 16
+        elif key == 'single':
+            start = 9
+            stop = 12
+        metallicity = float(dat_files[j][start:stop])/1000.
+            
+        age = bpass[:,0]
+        metallicity = metallicity*np.ones(len(age))
+        imf_1 = imf1[i]*np.ones(len(age))         
+        imf_2 = imf2[i]*np.ones(len(age))         
+        imf_3 = imf3[i]*np.ones(len(age))
+            
+        df_arr[j] = pd.DataFrame()            
+            
+        df_arr[j]['IMF (0.1-0.5)'] = pd.Series(imf_1)
+        df_arr[j]['IMF (0.5-100)'] = pd.Series(imf_2)
+        df_arr[j]['IMF (100-300)'] = pd.Series(imf_3)
+        df_arr[j]['Metallicity'] = pd.Series(metallicity) 
+        df_arr[j]['log(Age)'] = pd.Series(age)
+        df_arr[j]['u'] = pd.Series(bpass[:,10])
+        df_arr[j]['g'] = pd.Series(bpass[:,11])    
+        df_arr[j]['r'] = pd.Series(bpass[:,12])    
+        df_arr[j]['i'] = pd.Series(bpass[:,13])
+        df_arr[j]['z'] = pd.Series(bpass[:,14])
+        df_arr[j]['J'] = pd.Series(bpass[:,7])
+        df_arr[j]['H'] = pd.Series(bpass[:,8])
+        df_arr[j]['K'] = pd.Series(bpass[:,9])
+```
+
+
+```python
+# Read in the BPASS model data 
+bpass_single = pd.read_pickle('bpass_sin_mags.pkl')
+bpass_binary = pd.read_pickle('bpass_bin_mags.pkl')
+
+# Display data frame for binary models as example 
+bpass_binary.head()
+```
