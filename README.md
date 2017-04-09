@@ -1104,3 +1104,125 @@ plt.plot(mass_plot[:,0], f, '-')
 ### (2.3d) Galaxy Parameters as a Function of Binary Fraction
 
 To further investigate our fundamental question, we explored how our galaxy parameters behave as a function of the binary fraction (as opposed to \\(f_{MBBH}\\)). To do so, we chose three dwarf galaxies with different mass estimates from RESOLVE to capture what we felt was a representative (albeit small) picture of how our code runs for the entire sample.  
+```python
+# Load data for three galaxies.
+df = pd.read_csv('output_three.csv')
+
+# Select the galaxy names to loop over.
+galaxy_names = np.unique(df['Name'])
+
+# Do calculations for the first galaxy.
+norms = df[ (df['Name'] == galaxy_names[0]) ]['Normalization']
+chis = df[ (df['Name'] == galaxy_names[0]) ]['Chi^2']
+range_z = 0.04-0.001
+range_logA = 10.0-6.0
+priors = range_z**-1*range_logA**-1
+dpz = range_z/11.0
+dplA = range_logA/41.0
+lnprobs = -0.5*chis + np.log(priors)
+probs = np.exp(lnprobs)
+ages = df[ (df['Name'] == galaxy_names[0]) ]['log(Age)']
+Zs = df[ (df['Name'] == galaxy_names[0]) ]['Metallicity']
+alphas = df[ (df['Name'] == galaxy_names[0]) ]['Alpha']
+cz = resolve[(resolve['name'] == galaxy_names[0])]['cz']
+logmstar = resolve[(resolve['name'] == galaxy_names[0])]['logmstar']
+ratios = norms
+logmass = np.log10(ratios*10**6)
+
+# Calculate mass difference as a function of alpha. 
+def diff_alpha(gal_name, alphas=alphas):
+    alphas = np.unique(alphas)
+    wmalpha = np.zeros(len(alphas))
+    diffs = np.zeros(len(alphas))
+    metal = np.zeros(len(alphas))
+    age = np.zeros(len(alphas))
+    for k, alpha in enumerate(alphas):
+        # dataframe centric structure
+        temp = df[ (df['Name'] == gal_name) & (df['Alpha'] == alpha)]
+        ntemp = len(temp)
+        ptemp = np.zeros(ntemp)
+        mtemp = np.zeros(ntemp)
+        j = 0
+        for index, row in temp.iterrows():
+            mass = np.log10(row['Normalization']*10**6)
+            lnprob = -0.5*row['Chi^2'] + np.log(priors)
+            prob = np.exp(lnprob)
+            ptemp[j] = prob
+            mtemp[j] = mass
+            j += 1
+
+        mtemp = pd.Series(mtemp)
+        ptemp = pd.Series(ptemp)
+
+        temp = temp.assign(mass = mtemp.values)
+        temp = temp.assign(prob = ptemp.values)
+        logmstar = resolve[(resolve['name'] == gal_name)]['logmstar']
+
+        wmalpha[k] = np.sum(temp['prob']*temp['mass'])/np.sum(temp['prob'])
+        diffs[k] = (wmalpha[k] - logmstar)/logmstar*100.0
+        metal[k] = np.sum(temp['prob']*temp['Metallicity'])/np.sum(temp['prob'])
+        age[k] = np.sum(temp['prob']*temp['log(Age)'])/np.sum(temp['prob'])
+    return diffs,metal,age
+
+run1 = diff_alpha(galaxy_names[0])
+run2 = diff_alpha(galaxy_names[1])
+run3 = diff_alpha(galaxy_names[2])
+
+plt.figure(figsize=(8,6))
+plt.scatter(np.unique(alphas), run1[0], s=60, c='g', alpha=0.5)
+plt.scatter(np.unique(alphas), run2[0], s=60, c='orange', alpha=0.5)
+plt.scatter(np.unique(alphas), run3[0], s=60, c='m', alpha=0.5)
+plt.legend(galaxy_names, loc=2)
+plt.xlabel("Binary Fraction")
+plt.ylabel("Percent Difference")
+plt.title('Percent Mass Difference as a Function of Binary Fraction')
+
+plt.figure(figsize=(8,6))
+plt.scatter(np.unique(alphas), run1[1], s=60, c='g', alpha=0.5)
+plt.scatter(np.unique(alphas), run2[1], s=60, c='orange', alpha=0.5)
+plt.scatter(np.unique(alphas), run3[1], s=60, c='m', alpha=0.5)
+plt.legend(galaxy_names, loc=2)
+plt.xlabel("Binary Fraction")
+plt.ylabel("Metallicity")
+plt.title('Metallicity as a Function of Binary Fraction')
+plt.show()
+
+plt.figure(figsize=(8,6))
+plt.scatter(np.unique(alphas), run1[2], s=60, c='g', alpha=0.5)
+plt.scatter(np.unique(alphas), run2[2], s=60, c='orange', alpha=0.5)
+plt.scatter(np.unique(alphas), run3[2], s=60, c='m', alpha=0.5)
+plt.legend(galaxy_names, loc=6)
+plt.xlabel("Binary Fraction")
+plt.ylabel("log(Age) [Yr]")
+plt.title('log(Age) as a Function of Binary Fraction')
+plt.show()
+```
+
+
+![png](DG_SPSv4_files/DG_SPSv4_28_0.png)
+
+
+
+![png](DG_SPSv4_files/DG_SPSv4_28_1.png)
+
+
+
+![png](DG_SPSv4_files/DG_SPSv4_28_2.png)
+
+## (2.4) Bayesian Analysis
+
+Up until this point, we have not performed any calculations that require any sort of formal Bayesian analysis. That is, we have not imposed priors on the model parameters with the hope of getting an idea of which ones are best for a given galaxy (nor have we discussed an appropriate likelihood function or performed any sort of marginalization). We include a brief discussion of each below, followed by code to demonstrate how this works for our sample galaxy.
+
+### (2.4a) Priors
+
+- IMF slopes: We do not claim to know anything about these parameters a priori, so we do not incorporate anything into our prior that pertains to IMF slopes. 
+    - We will also not marginalize to capture the posterior distribution for these parameters. 
+- Age: We impose a uniform prior on `log(Age)`, spanning the range of ages provided by BPASS. 
+    - Although we could probably define a better prior here, we did not want to chop off any viable ages on accident.
+- Metallicity: We impose a uniform prior on `Metallicity`, spanning the range of metallicities provided by BPASS. 
+- Alpha: We impose a uniform prior on `alpha`, spanning the range of binary fractions that we test. 
+    - Note: Since this is just one, we do not include it explicitly below. 
+
+Our prior distribution is given below, where \\(\{{\theta}_i\}\\) represents our set of model parameters. 
+
+$$p\left(\{{\theta}_i\}\right) = \frac{1}{\textrm{log(age) range}} \frac{1}{\textrm{metallicity range}}$$
