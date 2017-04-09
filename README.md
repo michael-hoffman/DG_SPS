@@ -742,3 +742,89 @@ bpass['f_{MBBH}'] = fmbbh
 
 bpass.head()
 ```
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Name</th>
+      <th>IMF (0.1-0.5)</th>
+      <th>IMF (0.5-100)</th>
+      <th>IMF (100-300)</th>
+      <th>log(Age)</th>
+      <th>Metallicity</th>
+      <th>Alpha</th>
+      <th>Normalization</th>
+      <th>Chi^2</th>
+      <th>Good Bands</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>rf0044</td>
+      <td>-1.3</td>
+      <td>-2.0</td>
+      <td>-2.0</td>
+      <td>6.0</td>
+      <td>0.001</td>
+      <td>0.0</td>
+      <td>2.076575</td>
+      <td>57.360405</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>rf0044</td>
+      <td>-1.3</td>
+      <td>-2.0</td>
+      <td>-2.0</td>
+      <td>6.1</td>
+      <td>0.001</td>
+      <td>0.0</td>
+      <td>1.790453</td>
+      <td>57.377654</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>rf0044</td>
+      <td>-1.3</td>
+      <td>-2.0</td>
+      <td>-2.0</td>
+      <td>6.2</td>
+      <td>0.001</td>
+      <td>0.0</td>
+      <td>1.536136</td>
+      <td>57.342386</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>rf0044</td>
+      <td>-1.3</td>
+      <td>-2.0</td>
+      <td>-2.0</td>
+      <td>6.3</td>
+      <td>0.001</td>
+      <td>0.0</td>
+      <td>1.068513</td>
+      <td>52.654002</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>rf0044</td>
+      <td>-1.3</td>
+      <td>-2.0</td>
+      <td>-2.0</td>
+      <td>6.4</td>
+      <td>0.001</td>
+      <td>0.0</td>
+      <td>1.287277</td>
+      <td>28.877582</td>
+      <td>8</td>
+    </tr>
+  </tbody>
+</table>
+</div>
