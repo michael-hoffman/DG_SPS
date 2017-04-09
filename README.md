@@ -1386,7 +1386,947 @@ plt.ylabel("Marginalized Posterior Distribution")
 - For metallicity, our results indicate that a high-metallicity model is favored for `rf0001`. Again, we see some non-monotonic behavior as metallicity increases, but we cannot conclude much because it looks as though a proper fit for the metallicity would fall beyond the extent of our model grid. 
 - The distribution for binary fraction, however, appears to favor a low binary fraction for this particular galaxy. The degree to which it does so is somewhat surprising, but reasonable nonetheless. 
 
+## 3. Method Comparison
 
+Initially, our group wished to use a variety of MCMC samplers in Python (emcee, PyStan) for our project, but we found the lack of an analytic model (that is, an analytic model that depends on all of our model parameters in a coherent fashion) made this task impossible. Instead, we decided to explore a number of different sampling algorithms for exploring our posterior distribution. We had moderate amounts of success with two of the methods, while the third/fourth ultimately did not work for our parameter space. 
+
+The motivation for sampling from this distribution is that our dataset could become computationally intensive if we were to add more complicated models, more galaxies, or just wanted to compute more quantities (i.e., it would not take much to blow up our parameter space). Without needing to perform calculations on the entire dataset, we explore three methods for sampling from our posterior. The goal of this sampling is to identify areas of interest in our parameter space and determine the expected distribution of the massive binary black hole fraction, $f_{MBBH}$, for individual galaxies. 
+
+*Note: Due to the coarse nature of our model grid, our sampling algorithm had a relatively small parameter space to explore. Nevertheless, we hope to demonstrate the effictiveness of each.* 
+
+### (3.1) Simple Random Sampling
+
+Since we have a rather complicated model space and little intuition as to where the "good" models will be, we first perform simple random sampling to sample from our posterior probability distribution. The advantage of this method is that each model has an equal probability of being selected and if performed multiple times, the samples are statistically independent. This method is additionally motivated by the fact that the marginalized posterior distributions are mostly featureless.  
+
+For each method, we generate a corner plot for the three parameters we are most interested in and display the median value and 16th/84th percentile values for each. We also plot a histogram of the calculated $f_{MBBH}$ values.  
+
+
+```python
+# Define values to randomly sample
+all_names = ['rf0044 ', 'rf0177 ', 'rs0245 ']
+all_age = np.arange(6.0,10.1,0.1)
+all_z = np.array([0.001, 0.002, 0.003, 0.004, 0.006, 0.008, 0.010, 0.014, 0.020, 0.030, 0.040])
+all_alpha = np.linspace(0.0,1.0,11)
+all_imfs = np.array([ [-1.30, -2.0, -2.0], [-1.30, -2.0, 0.0], [-2.35, -2.35, 0.0], 
+                     [-1.30, -2.35, -2.35], [-1.30, -2.35, 0.0], [-1.30, -2.70, -2.70], 
+                     [-1.30, -2.70, 0.0] ])
+
+# Function for computing posterior probability using previously stated prior.
+def posterior_prob(p, chisq):
+    range_z = 0.04-0.001
+    range_logA = 10.0-6.0
+    priors = range_z**-1*range_logA**-1
+    lnprob = -0.5*chisq + np.log(priors)
+    prob = np.exp(lnprob)
+    return prob
+
+# Reload RESOLVE data and model data.
+resolve = pd.read_pickle('resolve.pkl')
+resolve = resolve[(resolve['logmstar'] < 9.5)]
+df = pd.read_csv('output_three.csv')
+
+def sps_rand(gal):
+    # Initially choose random point within the parameter space.
+    imf_ind = np.random.randint(len(all_imfs))
+    p_0 = [all_age[np.random.randint(len(all_age))],
+           all_z[np.random.randint(len(all_z))],
+           all_alpha[np.random.randint(len(all_alpha))],
+           all_imfs[imf_ind][0],
+           all_imfs[imf_ind][1],
+           all_imfs[imf_ind][2]]
+    
+    # Steps in MCMC chain
+    nsteps = 51000
+    current_post_prob = 1e-15   # choose low initial values arbitrarily to get the chain moving
+    current_fbin = 1e-10
+
+    # Initialize arrays to store results from chain (originally set up to be used for multiple galaxies at once)
+    gal_arr = resolve['name']
+    age_arr = np.zeros((len(gal_arr), nsteps))
+    z_arr = np.zeros((len(gal_arr), nsteps))
+    alpha_arr = np.zeros((len(gal_arr), nsteps))
+    imf1_arr = np.zeros((len(gal_arr), nsteps))
+    imf2_arr = np.zeros((len(gal_arr), nsteps))
+    imf3_arr = np.zeros((len(gal_arr), nsteps))
+    prob_arr = np.zeros((len(gal_arr), nsteps))
+    fbin_arr = np.zeros((len(gal_arr), nsteps))
+```
+
+```python
+for n in range(nsteps):
+    print '------------------------------------------------------------------'
+    print 'Galaxy: ', gal
+    print 'Step number : ', n
+        
+    # Calculate new step, using normally distributed integers for each parameter
+    imf_ind = np.random.randint(len(all_imfs))
+    p_new = [all_age[np.random.randint(len(all_age))],
+             all_z[np.random.randint(len(all_z))],
+             all_alpha[np.random.randint(len(all_alpha))],
+             all_imfs[imf_ind][0], all_imfs[imf_ind][1],
+             all_imfs[imf_ind][2]]
+      
+    # Create boolean masks for each randomly selected parameter and "look up" the row that has those values
+    name_bool = df['Name'] == gal
+    age_bool = np.isclose(df['log(Age)'], p_new[0], 1e-4)
+    z_bool = np.isclose(df['Metallicity'], p_new[1], 1e-4)
+    alpha_bool = np.isclose(df['Alpha'], p_new[2], 1e-4)
+    imf1_bool = np.isclose(df['IMF (0.1-0.5)'], p_new[3], 1e-4)
+    imf2_bool = np.isclose(df['IMF (0.5-100)'], p_new[4], 1e-4)
+    imf3_bool = np.isclose(df['IMF (100-300)'], p_new[5], 1e-4)
+
+    current_row = df[name_bool & age_bool & z_bool & alpha_bool & imf1_bool & imf2_bool & imf3_bool]
+    current_chisq = current_row['Chi^2']
+
+    # Calculate posterior probability and m_bbh fraction at new point 
+    new_post_prob = posterior_prob([p_new[0], p_new[1]], current_chisq)
+    parr = np.array(new_post_prob)
+    new_post_prob = parr[0]
+
+    new_fbin = fbin_calc(p_new[2], p_new[3], p_new[4], p_new[5])
+
+    # If probability at new point is higher than old point, automatically accept
+    # Add parameters and calculated values of new point 
+    gi=0
+    age_arr[gi, n] = p_new[0]
+    z_arr[gi, n] = p_new[1]
+    alpha_arr[gi, n] = p_new[2]
+    imf1_arr[gi, n] = p_new[3]
+    imf2_arr[gi, n] = p_new[4]
+    imf3_arr[gi, n] = p_new[5]
+    prob_arr[gi, n] = new_post_prob
+    fbin_arr[gi, n] = new_fbin
+
+    current_post_prob = new_post_prob
+    current_fbin = new_fbin
+    p0 = p_new
+    print p0
+    print current_fbin
+
+# Remove burn-in period (first 1000 steps)
+zs = z_arr[0,1000:]
+ages = age_arr[0,1000:]
+alphas = alpha_arr[0,1000:]
+fbins = fbin_arr[0,1000:]
+   
+# Corner plot of parameters from chain
+plt.figure()
+data = np.array([ages,zs,alphas]).T
+corner.corner(data, labels=[r"$log(Age)$", r"$Metallicity$", r"$alpha$"], show_titles=True, quantiles=[0.16,0.84], plot_contours=True)
+plt.savefig('corner_'+gal[0:-1]+'_random.png')
+plt.clf()
+    
+# Histogram of f_mmbh calculated at each step in chain
+plt.figure()
+hist(fbins, bins='knuth')
+plt.xlabel('f_MBBH')
+plt.ylabel('Count')
+plt.title('Expected Fraction of Massive Binary Black Holes - '+ gal)
+plt.savefig('fbin_'+gal[0:-1]+'_random.png')
+plt.clf()
+```
+
+
+```python
+# Simple Random Sampling - Corner Plot for Galaxy rf0044
+Image("corner_rf0044_random.png")
+```
+
+
+
+
+![png](DG_SPSv4_files/DG_SPSv4_36_0.png)
+
+
+
+
+```python
+# Simple Random Sampling - f_mmbh Histogram for Galaxy rf0044
+Image("fbin_rf0044_random.png")
+```
+
+
+
+
+![png](DG_SPSv4_files/DG_SPSv4_37_0.png)
+
+### (3.2) Metropolis-Hastings Algorithm
+
+Knowing we could do better than simple random sampling, we implemented a Metropolis-Hastings algorithm to generate a Markov Chain in our parameter space. This method takes advantage of most of the code used in the random sampler, with the addition of a conditional statement that calculates the posterior probability at each model point in the chain.  We use the standard Metropolis-Hastings step criterion for determining whether or not to accept the next element in the chain. Additionally, we employ a Gaussian centered at the current point to select the following step candidate.  Because our model grid is discrete and fairly coarse, this step calculation is not ideal. The results of this MCMC method would be improved if we were able to compute a function based on continuous parameters (and sample from a continuous parameter space). The computed values could also be more robust by using a bootstrapping method to calculate the mean and 1-sigma quantiles.
+
+
+```python
+all_names = ['rf0044 ', 'rf0177 ', 'rs0245 ']
+all_age = np.arange(6.0,10.1,0.1)
+all_z = np.array([0.001, 0.002, 0.003, 0.004, 0.006, 0.008, 0.010, 0.014, 0.020, 0.030, 0.040])
+all_alpha = np.linspace(0.0,1.0,11)
+all_imfs = np.array([ [-1.30, -2.0, -2.0], [-1.30, -2.0, 0.0], [-2.35, -2.35, 0.0], [-1.30, -2.35, -2.35], [-1.30, -2.35, 0.0], [-1.30, -2.70, -2.70], [-1.30, -2.70, 0.0] ])
+
+def posterior_prob(p, chisq):
+    range_z = 0.04-0.001
+    range_logA = 10.0-6.0
+    priors = range_z**-1*range_logA**-1
+    lnprob = -0.5*chisq + np.log(priors)
+    prob = np.exp(lnprob)
+    return prob
+
+resolve = pd.read_pickle('resolve.pkl')
+resolve = resolve[(resolve['logmstar'] < 9.5)]
+df = pd.read_csv('output_three.csv')
+
+def sps_mh(gal):
+    x1 = np.arange(-4, 5)
+    xU1, xL1 = x1 + 0.5, x1 - 0.5
+    prob1 = ss.norm.cdf(xU1, scale = 2) - ss.norm.cdf(xL1, scale = 2)
+    prob1 = prob1 / prob1.sum() #normalize the probabilities so their sum is 1
+
+    cur_age_ind = np.random.randint(len(all_age))
+    cur_z_ind = np.random.randint(len(all_z))
+    cur_alpha_ind = np.random.randint(len(all_alpha))
+    cur_imf_ind = np.random.randint(len(all_imfs))
+
+    p_0 = [all_age[cur_age_ind],
+           all_z[cur_z_ind],
+           all_alpha[cur_alpha_ind],
+           all_imfs[cur_imf_ind][0],
+           all_imfs[cur_imf_ind][1],
+           all_imfs[cur_imf_ind][2] ]
+
+    nsteps = 50
+    current_post_prob = 1e-15
+    current_fbin = 1e-10
+
+    gal_arr = resolve['name']
+    age_arr = np.zeros((len(gal_arr), nsteps))
+    z_arr = np.zeros((len(gal_arr), nsteps))
+    alpha_arr = np.zeros((len(gal_arr), nsteps))
+    imf1_arr = np.zeros((len(gal_arr), nsteps))
+    imf2_arr = np.zeros((len(gal_arr), nsteps))
+    imf3_arr = np.zeros((len(gal_arr), nsteps))
+    prob_arr = np.zeros((len(gal_arr), nsteps))
+    fbin_arr = np.zeros((len(gal_arr), nsteps))
+    step_ages = []
+
+    for n in range(nsteps):
+        print '------------------------------------------------------------------'
+        print 'Galaxy: ', gal
+        print 'Step number : ', n
+        # Calculate new step, using normally distributed integers for each parameter
+        new_ind = np.random.choice(x1, size=4, p=prob1)
+        new_age_ind = cur_age_ind + new_ind[0]
+        new_z_ind = cur_z_ind + new_ind[1]
+        new_alpha_ind = cur_alpha_ind + new_ind[2]
+        new_imf_ind = cur_imf_ind + new_ind[3]
+        
+        p_new = [all_age[new_age_ind%len(all_age)],
+                 all_z[new_z_ind%len(all_z)],
+                 all_alpha[new_alpha_ind%len(all_alpha)],
+                 all_imfs[new_imf_ind%len(all_imfs)][0],
+                 all_imfs[new_imf_ind%len(all_imfs)][1],
+                 all_imfs[new_imf_ind%len(all_imfs)][2] ]
+
+        # Pull parameters from new point and look up model data
+        name_bool = df['Name'] == gal
+        age_bool = np.isclose(df['log(Age)'], p_new[0], 1e-4)
+        z_bool = np.isclose(df['Metallicity'], p_new[1], 1e-4)
+        alpha_bool = np.isclose(df['Alpha'], p_new[2], 1e-4)
+        imf1_bool = np.isclose(df['IMF (0.1-0.5)'], p_new[3], 1e-4)
+        imf2_bool = np.isclose(df['IMF (0.5-100)'], p_new[4], 1e-4)
+        imf3_bool = np.isclose(df['IMF (100-300)'], p_new[5], 1e-4)
+
+        current_row = df[name_bool & age_bool & z_bool & alpha_bool & imf1_bool & imf2_bool & imf3_bool]
+        step_ages.append(float(current_row['log(Age)']))
+        current_chisq = current_row['Chi^2']
+        
+        # Calculate posterior probability and m_bbh fraction at new point 
+        new_post_prob = posterior_prob([p_new[0], p_new[1]], current_chisq)
+        parr = np.array(new_post_prob)
+        new_post_prob = parr[0]
+
+        new_fbin = fbin_calc(p_new[2], p_new[3], p_new[4], p_new[5])
+
+        # If probability at new point is higher than old point, automatically accept
+        # Add parameters and calculated values of new point 
+        gi=0
+        if new_post_prob > current_post_prob:
+            age_arr[gi, n] = p_new[0]
+            z_arr[gi, n] = p_new[1]
+            alpha_arr[gi, n] = p_new[2]
+            imf1_arr[gi, n] = p_new[3]
+            imf2_arr[gi, n] = p_new[4]
+            imf3_arr[gi, n] = p_new[5]
+            prob_arr[gi, n] = new_post_prob
+            fbin_arr[gi, n] = new_fbin
+
+            current_post_prob = new_post_prob
+            current_fbin = new_fbin
+            p0 = p_new
+            cur_age_ind = new_age_ind
+            cur_z_ind = new_z_ind
+            cur_alpha_ind = new_alpha_ind
+            cur_imf_ind = new_imf_ind
+            print p0
+            print current_fbin
+
+        # If probability at new point is less than probability at old point,
+        # Calculate random number between 0 and 1, if this number is less than 
+        # the probability at the new point, accept the new point 
+        # If the random number is greater than the new probability, accept the 
+        # old point and add those parameters and calculated values to arrays
+        elif new_post_prob < current_post_prob:
+            step_prob = np.random.random(1)
+            if step_prob < new_post_prob:
+                age_arr[gi, n] = p_new[0]
+                z_arr[gi, n] = p_new[1]
+                alpha_arr[gi, n] = p_new[2]
+                imf1_arr[gi, n] = p_new[3]
+                imf2_arr[gi, n] = p_new[4]
+                imf3_arr[gi, n] = p_new[5]
+                prob_arr[gi, n] = new_post_prob
+                fbin_arr[gi, n] = new_fbin
+
+                current_post_prob = new_post_prob
+                current_fbin = new_fbin
+                p0 = p_new
+                cur_age_ind = new_age_ind
+                cur_z_ind = new_z_ind
+                cur_alpha_ind = new_alpha_ind
+                cur_imf_ind = new_imf_ind
+                print p0
+                print current_fbin
+            else:
+                age_arr[gi, n] = p0[0]
+                z_arr[gi, n] = p0[1]
+                alpha_arr[gi, n] = p0[2]
+                imf1_arr[gi, n] = p0[3]
+                imf2_arr[gi, n] = p0[4]
+                imf3_arr[gi, n] = p0[5]
+                prob_arr[gi, n] = current_post_prob
+                fbin_arr[gi, n] = current_fbin
+                print p0
+                print current_fbin
+
+    zs = z_arr[0,:]
+    ages = age_arr[0,:]
+    alphas = alpha_arr[0,:]
+    fbins = fbin_arr[0,:]
+    
+    # Plots commented out for presentation
+    '''
+    plt.figure()
+    data = np.array([ages,zs,alphas]).T
+    corner.corner(data, labels=[r"$log(Age)$", r"$Metallicity$", r"$alpha$"], show_titles=True, quantiles=[0.16,0.84], plot_contours=True)
+    plt.savefig('corner_'+gal[0:-1]+'_live.png')
+    plt.clf()
+
+    plt.figure()
+    hist(fbins, bins='knuth')
+    plt.xlabel('f_MBBH')
+    plt.ylabel('Count')
+    plt.title('Expected Fraction of Massive Binary Black Holes - '+ gal)
+    plt.savefig('fbin_'+gal[0:-1]+'_live.png')
+    plt.clf()
+    '''
+    plt.figure()
+    ax1 = plt.subplot(311)
+    plt.plot(np.arange(len(ages)), ages)
+    plt.setp(ax1.get_xticklabels(), visible=False)
+    plt.ylabel('Age')
+    plt.title('Parameter Traces - ' + gal)
+
+    ax2 = plt.subplot(312, sharex=ax1)
+    plt.plot(np.arange(len(zs)), zs)
+    plt.setp(ax2.get_xticklabels(), visible=False)
+    plt.ylabel('Metallicity')
+
+    ax3 = plt.subplot(313, sharex=ax1)
+    plt.plot(np.arange(len(alphas)), alphas)
+    plt.setp(ax3.get_xticklabels())
+    plt.ylabel('Alpha')
+    plt.xlim(0,50)
+    #plt.savefig('trace_'+gal+'_live.png')
+
+sps_mh(all_names[0])
+
+local_time = time.asctime( time.localtime(time.time()) )
+print('--end of calculation at time: %s --' %local_time)
+```
+
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  0
+    [6.3999999999999986, 0.0080000000000000002, 0.40000000000000002, -1.3, -2.7000000000000002, -2.7000000000000002]
+    0.00300067196118
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  1
+    [6.3999999999999986, 0.0080000000000000002, 0.40000000000000002, -1.3, -2.7000000000000002, -2.7000000000000002]
+    0.00300067196118
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  2
+    [6.3999999999999986, 0.0060000000000000001, 0.40000000000000002, -1.3, -2.7000000000000002, -2.7000000000000002]
+    0.00300067196118
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  3
+    [6.3999999999999986, 0.0060000000000000001, 0.40000000000000002, -1.3, -2.7000000000000002, -2.7000000000000002]
+    0.00300067196118
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  4
+    [6.3999999999999986, 0.0060000000000000001, 0.40000000000000002, -1.3, -2.7000000000000002, -2.7000000000000002]
+    0.00300067196118
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  5
+    [6.4999999999999982, 0.0030000000000000001, 0.20000000000000001, -1.3, -2.7000000000000002, -2.7000000000000002]
+    0.00150033598059
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  6
+    [6.4999999999999982, 0.0030000000000000001, 0.20000000000000001, -1.3, -2.7000000000000002, -2.7000000000000002]
+    0.00150033598059
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  7
+    [6.7999999999999972, 0.0030000000000000001, 0.10000000000000001, -1.3, -2.0, 0.0]
+    0.000321111618132
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  8
+    [6.7999999999999972, 0.0030000000000000001, 0.10000000000000001, -1.3, -2.0, 0.0]
+    0.000321111618132
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  9
+    [6.8999999999999968, 0.0030000000000000001, 0.0, -2.3500000000000001, -2.3500000000000001, 0.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  10
+    [6.8999999999999968, 0.0030000000000000001, 0.0, -2.3500000000000001, -2.3500000000000001, 0.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  11
+    [6.8999999999999968, 0.0030000000000000001, 0.0, -2.3500000000000001, -2.3500000000000001, 0.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  12
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  13
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  14
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  15
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  16
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  17
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  18
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  19
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  20
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  21
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  22
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  23
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  24
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  25
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  26
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  27
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  28
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  29
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  30
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  31
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  32
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  33
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  34
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  35
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  36
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  37
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  38
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  39
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  40
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  41
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  42
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  43
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  44
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  45
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  46
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  47
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  48
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+    ------------------------------------------------------------------
+    Galaxy:  rf0044 
+    Step number :  49
+    [6.7999999999999972, 0.002, 0.0, -1.3, -2.0, -2.0]
+    0.0
+      agg_filter: unknown
+      alpha: float (0.0 transparent through 1.0 opaque) 
+      animated: [True | False] 
+      axes: an :class:`~matplotlib.axes.Axes` instance 
+      backgroundcolor: any matplotlib color 
+      bbox: FancyBboxPatch prop dict 
+      clip_box: a :class:`matplotlib.transforms.Bbox` instance 
+      clip_on: [True | False] 
+      clip_path: [ (:class:`~matplotlib.path.Path`, :class:`~matplotlib.transforms.Transform`) | :class:`~matplotlib.patches.Patch` | None ] 
+      color: any matplotlib color 
+      contains: a callable function 
+      family or fontfamily or fontname or name: [FONTNAME | 'serif' | 'sans-serif' | 'cursive' | 'fantasy' | 'monospace' ] 
+      figure: a :class:`matplotlib.figure.Figure` instance 
+      fontproperties or font_properties: a :class:`matplotlib.font_manager.FontProperties` instance 
+      gid: an id string 
+      horizontalalignment or ha: [ 'center' | 'right' | 'left' ] 
+      label: string or anything printable with '%s' conversion. 
+      linespacing: float (multiple of font size) 
+      multialignment: ['left' | 'right' | 'center' ] 
+      path_effects: unknown
+      picker: [None|float|boolean|callable] 
+      position: (x,y) 
+      rasterized: [True | False | None] 
+      rotation: [ angle in degrees | 'vertical' | 'horizontal' ] 
+      rotation_mode: unknown
+      size or fontsize: [size in points | 'xx-small' | 'x-small' | 'small' | 'medium' | 'large' | 'x-large' | 'xx-large' ] 
+      sketch_params: unknown
+      snap: unknown
+      stretch or fontstretch: [a numeric value in range 0-1000 | 'ultra-condensed' | 'extra-condensed' | 'condensed' | 'semi-condensed' | 'normal' | 'semi-expanded' | 'expanded' | 'extra-expanded' | 'ultra-expanded' ] 
+      style or fontstyle: [ 'normal' | 'italic' | 'oblique'] 
+      text: string or anything printable with '%s' conversion. 
+      transform: :class:`~matplotlib.transforms.Transform` instance 
+      url: a url string 
+      usetex: unknown
+      variant or fontvariant: [ 'normal' | 'small-caps' ] 
+      verticalalignment or va or ma: [ 'center' | 'top' | 'bottom' | 'baseline' ] 
+      visible: [True | False] 
+      weight or fontweight: [a numeric value in range 0-1000 | 'ultralight' | 'light' | 'normal' | 'regular' | 'book' | 'medium' | 'roman' | 'semibold' | 'demibold' | 'demi' | 'bold' | 'heavy' | 'extra bold' | 'black' ] 
+      wrap: unknown
+      x: float 
+      y: float 
+      zorder: any number 
+    --end of calculation at time: Wed Dec  7 08:57:15 2016 --
+
+
+
+![png](DG_SPSv4_files/DG_SPSv4_39_1.png)
+
+
+
+```python
+# Metroplis-Hastings - Corner Plot for Galaxy rf0044
+Image("corner_rf0044.png")
+```
+
+
+
+
+![png](DG_SPSv4_files/DG_SPSv4_40_0.png)
+
+
+
+
+```python
+# Metropolis-Hastings - f_mbbh Histogram for Galaxy rf0044
+Image("fbin_rf0044.png")
+```
+
+
+
+
+![png](DG_SPSv4_files/DG_SPSv4_41_0.png)
+
+
+
+### (3.3) Slice Sampling and NUTS (Failures)
+
+As a third and fourth sampling method, we chose to explore slice sampling and the No-U-Turn-Sampler (Hoffman & Gelman, 2014). Both of these are said to have advantages over traditional Metropolis-Hastings, namely: <br/>
+
+#### Slice Sampling
+- Best described as uniform sampling that takes into account the shape of the sampling distribution.
+    - Insensitive to step size (it will adaptively change to mirror the local shape of the distribution).
+- (In theory), relative straightforward to implement - hop on over to any site on slice sampling, and you will find that there are only a couple steps that go into it. 
+
+#### NUTS (No-U-Turn Sampler)
+- Hamiltonian Monte Carlo (HMC) method that allows for large steps through parameter space with a high probability of acceptance using gradient information.  
+- As the name implies, NUTS will move through parameter space optimally (not turning back around and sampling over the same region repeatedly). 
+
+To implement each of these sampling algorithms, we attempted to use a Python library known as Sampyl (http://matatat.org/sampyl/index.html), which contains a suite of MCMC samplers in Python. The advantage of using Sampyl (instead of something like PyStan or emcee, which also did not work) is that the user does not need to learn any new syntax to use it - all that is needed is the log-posterior distribution and model parameters. <br/>
+
+In the context of our problem, however, neither of these methods worked with the Sampyl samplers. The crux of the issue stemmed from our discrete parameter space - essentially, we are given a model grid with a set of allowed parameters, and we cannot step anywhere else but along that grid. Since both of these sampling algorithms seem to rely on sampling a continuous parameter space (along with having a log-likelihood function that is an explicit function of the model parameters), the code does not run for either algorithm. For slice sampling, the slice width returned is zero on the first iteration, and the code fails; for NUTS, the code does not seem to think that our log-likelihood depends on the model parameters (which is technically true, as I had to define it externally), and never moves off of the initial set of model parameters. The code for either method is included below. 
+
+*Note: A future research topic would/could be to try to retrofit each of these sampling algorithms to work on a finite grid. This may be a trivial issue that we have overlooked, but it seems like a worthwhile endeavor!*
+
+```python
+# Identify target galaxy, then pull associated rows out of data frame.  
+target = 'rf0044 ' 
+gal_df = bpass.loc[bpass['Name'] == target]
+log_ages = np.arange(6.0,10.1,0.1)  
+metallicities = np.array([0.001, 0.002, 0.003, 0.004, 0.006, 0.008, 0.010, 
+                          0.014, 0.020, 0.030,0.040]) 
+alphas = np.arange(0.0,1.1,0.1)
+imf_indices = np.arange(0,7,1)
+imf1 = np.array([-1.30, -1.30, -2.35, -1.30, -1.30, -1.30, -1.30])
+imf2 = np.array([-2.0, -2.0, -2.35, -2.35, -2.35, -2.70, -2.70])
+imf3 = np.array([-2.0, 0.0, 0.0, -2.35, 0.0, -2.70, 0.0])
+
+# Define log-posterior distribution.
+def logp(imf_index,alpha,metallicity,log_age):
+    if smp.outofbounds((alpha < 0.0) or (alpha > 1.0)):
+        return -np.inf
+    elif smp.outofbounds((metallicity < 0.001) or (metallicity > 0.040)):
+        return -np.inf
+    elif smp.outofbounds((log_age < 6.0) or (log_age > 10.0)):
+        return -np.inf
+    elif smp.outofbounds((imf_index < 0) or (imf_index > 6)):
+        return -np.inf
+    
+    # Find closest parameter value that is actually on our grid.
+    a_index = min(range(len(alphas)), key=lambda i: abs(alphas[i]-alpha))
+    m_index = min(range(len(metallicities)), key=lambda i: abs(metallicities[i]-metallicity))
+    la_index = min(range(len(log_ages)), key=lambda i: abs(log_ages[i]-log_age))
+    i_index = min(range(len(imf_indices)), key=lambda i: abs(imf_indices[i]-imf_index))
+    
+    # Recast parameters to closest permitted values.
+    alpha = alphas[a_index]
+    metallicity = metallicities[m_index]
+    log_age = log_ages[la_index]
+    imf_index = imf_indices[i_index]
+    
+    # Define log-likelihood of model
+    gal_chisq = gal_df[(gal_df['IMF (0.1-0.5)'] == imf1[imf_index]) &
+                       (gal_df['IMF (0.5-100)'] == imf2[imf_index]) &
+                       (gal_df['IMF (100-300)'] == imf3[imf_index]) &
+                       (gal_df['log(Age)'] == log_age) & 
+                       (gal_df['Metallicity'] == metallicity) & 
+                       (gal_df['Alpha'] == alpha), 'Chi^2'] 
+    log_ll = (-1./2.)*gal_chisq
+    
+    # Impose log-priors on parameters
+    prior_alpha = smp.uniform(alpha,0.0,1.0) 
+    prior_metallicity = smp.uniform(metallicity,0.001,0.040)
+    prior_age = smp.uniform(log_age,6.0,10.0)
+    
+    return log_ll + prior_alpha + prior_metallicity + prior_age
+
+# Run NUTS and/or slice sampling.
+start = smp.find_MAP(logp, {'imf_index': 3, 'alpha': 0.5, 'metallicity': 0.010, 'log_age': 8.0})
+nuts = smp.NUTS(logp, start)
+chain = nuts.sample(10100, burn=100)
+#slice_samp = smp.Slice(logp, start)
+#chain = slice_samp.sample(10100, burn=100)
+
+# Examine output.
+#plt.plot(chain.alpha)
+#plt.plot(chain.metallicity)
+#plt.plot(chain.log_age)
+```
+
+## 4. Fraction of Massive Binary Black Holes
+
+Returning to our original science question, we will run some code to get an idea of the most popular value of $f_{MBBH}$ for the dwarf galaxies in our sample. In essence, we will compute $f_{MMBH}$ for every galaxy/model pair, then select the "best one" as the one that maximizes the posterior probability. 
+
+*Note: We know that making a point estimate is a cardinal sin in Bayesian analysis, but we did those for the sake of computational efficiency/time. We believe that the proper thing to do would be to store the full posterior distribution for $f_{MBBH}$ for each galaxy after marginalization over metallicity, and then "stack" the posteriors to capture the distribution of $f_{MBBH}$ for all dwarf galaxies in RESOLVE.*
+
+```python
+# Load RESOLVE data. 
+resolve = pd.read_csv('resolve_all.csv')
+
+# Filter for dwarf galaxies.
+resolve = resolve[(resolve['logmstar'] < 9.5)]
+
+# Load model data. 
+input_df = pd.read_csv('all_output.csv')
+
+# Select galaxy names to loop over.
+galaxy_names = np.unique(input_df['Name'])
+
+# (Same as defined previously, included for clarity.)
+def fbin_calc(alpha, a, b, c):
+    
+    def intercept2(a, b, c):
+        return ((1./(0.5*(300.**2-0.1**2)))*(10**6 - (1./3.)*a*(0.5**3 - 0.1**3) - 
+                (1./3.)*b*(100**3 - 0.5**3) - (1./3.)*c*(300**3 - 100**3) - 
+                (b-a)*0.5*(0.5*(0.5**2-0.1**2)) - (b-c)*(100.0)*(0.5*(300**2-100**2))))
+    
+    def imf2(x):
+        return (b*x + yint2)*alpha
+        
+    def imf3(x):
+        return (c*x + yint3)*alpha
+
+    yint2 = intercept2(a, b, c)
+    #yint1 = (b-a)*(0.5) + yint2
+    yint3 = (b-c)*(100.) + yint2
+    
+    a1 = float(scipy.integrate.quad(imf2, 90, 100)[0])
+    a2 = float(scipy.integrate.quad(imf3, 100, 300)[0])
+    
+    f_bin = (a1+a2)/(10.**6)
+    
+    return f_bin
+
+# Define galaxy-independent variables.
+range_z = 0.04-0.001
+range_logA = 10.0-6.0
+priors = range_z**-1*range_logA**-1
+dpz = range_z/11.0
+dplA = range_logA/41.0
+ages = np.array(input_df[ (input_df['Name'] == galaxy_names[0]) ]['log(Age)'])
+Zs = np.array(input_df[ (input_df['Name'] == galaxy_names[0]) ]['Metallicity'])
+alphas = np.array(input_df[ (input_df['Name'] == galaxy_names[0]) ]['Alpha'])
+
+output_columns = ['Name', 'f_MBBH', 'Posterior Probability']
+
+# Parallelize at the individual galaxy level.
+numProcs = multiprocessing.cpu_count()
+numProcs -= 1
+
+def analyze(galaxy):
+    """
+    :param galaxy: name of galaxy from input_df
+    :return: output_list
+    """    
+    imf1 = np.array(input_df[ (input_df['Name'] == galaxy) ]['IMF (0.1-0.5)'])
+    imf2 = np.array(input_df[ (input_df['Name'] == galaxy) ]['IMF (0.5-100)'])
+    imf3 = np.array(input_df[ (input_df['Name'] == galaxy) ]['IMF (100-300)'])
+    chis = np.array(input_df[ (input_df['Name'] == galaxy) ]['Chi^2'])
+    # Introduce a scale factor for better numerical results.
+    chis = chis/10.0
+    lnprobs = -0.5*chis + np.log(priors)
+    probs = np.exp(lnprobs)
+    fMBBH = np.zeros(np.size(probs))
+    
+    for m_index, m_prob in enumerate(probs):
+        fMBBH[m_index] = fbin_calc(alphas[m_index],imf1[m_index],
+                                   imf2[m_index],imf3[m_index])
+                                   
+    best_fMBBH = fMBBH[np.where(probs == np.max(probs))]
+    # Generate output.
+    output_list = [galaxy,best_fMBBH,np.max(probs)]
+
+    print(output_list)
+
+    return output_list
+
+pool = multiprocessing.Pool(numProcs)
+output = pool.map(analyze, galaxy_names)
+df = pd.DataFrame(output, columns = output_columns)
+df.to_csv('fMBBH_all.csv', index=False)
+```
+
+
+```python
+fMBBH_all = pd.read_csv('fMBBH_all.csv')
+
+# Pull out f_MBBH for plotting purposes.
+fMBBH = fMBBH_all['f_MBBH']
+
+# Convoluted way of discarding multiple f_MBBH.
+# In short, this crude method of "finding the best f_MBBH" could,
+# in theory, return multiple results for multimodal posteriors.
+# If this is the case, we account for it below by randomly choosing
+# between the returned values for f_MBBH.
+fMBBH_final = np.zeros(len(fMBBH))
+ 
+for i, row in enumerate(fMBBH):
+    split_row = row.split()
+    last_ind = len(split_row)
+    last_term = split_row[last_ind-1]
+    last_term = last_term[:-1]
+    last_term = float(last_term)
+    if last_ind == 2: 
+        fMBBH_final[i] = last_term
+    elif last_ind == 3:
+        other_term = split_row[last_ind-2]
+        other_term = float(other_term)
+        rand_float = random.random()
+        if rand_float < 0.5:
+            fMBBH_final[i] = other_term
+        elif rand_float > 0.5:
+            fMBBH_final[i] = last_term    
+            
+plt.figure(figsize=(10, 6))
+counts, bins, patches = hist(fMBBH_final, bins='knuth', color='orange', 
+                             histtype='stepfilled', normed=False, alpha=0.5)
+plt.xlabel('$f_{MBBH}$')
+plt.ylabel('Number of Galaxies')
+plt.title('"Best" Value of $f_{MBBH}$ for RESOLVE Dwarf Galaxies')
+```
+
+![png](DG_SPSv4_files/DG_SPSv4_44_1.png)
+
+## 5. Discussion of Results
+
+- We have constructed a Bayesian model that uses an SPS model (BPASS) to explore galaxies with both single and binary star populations. 
+- We have explored the basic effect of including binary stars and compared these results with data from the RESOLVE survey. 
+- In addition, we were interested to see if the likelihood of these models favored dwarf galaxies as possible locations for super massive binary black holes, like the progenitors of the LIGO gravitational wave detection event reported earlier this year.
+
+### Outcomes:
+
+1. We have shown that our model provides similar estimates for galaxy masses when compared to those from the RESOLVE catalog (calculated using Bruzual-Charlot SPS models).
+2. We have shown that model parameters behave smoothly as a function of binary fraction, \\(\alpha\\). In general, the model predicts a larger galaxy mass for larger binary fractions. 
+3. Our work with the binary fraction indicates that binary star populations are important for characterizing dwarf galaxies (47% of total stellar population is in binaries). This would indicate that it is favorable for finding LIGO-like progenitors, if only because we expect a significant number of binaries.
+4. The model also points to metallicities in the neighborhood of 0.013, which is thought to be too large for the formation of LIGO like progenitors (for comparison, \\(Z_{\odot} = 0.0134\\)).
+5. Our model, when extended across all galaxies, suggests that the most likely fraction of massive binary black progenitors that could lead to a LIGO-like event is at or below 0.1%. Such a low number is expected; however, our results are preliminary and need to be evaluated more rigorously (i.e., without point estimates). 
+
+### Future Work:
+
+1. Incorporate SPS models with continuous star formation (available from BPASS, but we did not go down the rabbit hole). 
+2. Comparison to other popular SPS models. This was an intended goal from the outset, but it took longer than expected to get comfortable working with the BPASS models.  
+3. Figure out how to use slice sampling/NUTS. This was not a significant component of our final analysis, but it would be interesting to see how well each can do on a large parameter space (even if it remains a discrete grid of parameters).
+4. Use a more rigorous method to find the distribution of $f_{MBBH}$ (marginalization, combining individual distributions). 
+
+## 6. References
+
+[1] Eldridge, J.J., Izzard, R.G., and C.A. Tout. MNRAS, Volume 384, Issue 3, 1109-1118 (2008). <br/>
+[2] Eldridge, J.J. and E.R. Stanway. MNRAS, Volume 400, Issue 2, 1019-1028 (2009). <br/>
+[3] Eldridge, J.J. and E.R. Stanway. MNRAS, Volume 462, Issue 3, 3302-3313 (2016). <br/>
+[4] B. P. Abbott et al. (LIGO Scientific Collaboration and Virgo Collaboration), Phys. Rev. Lett. 116, 061102 (2016). <br/>
+[5] RESOLVE: Eckert et al., Astrophysical Journal, 810, 166 (2015). <br/>
+[6] Belczynski et al., Nature 534, 512–515 (2016) <br/>
+[7] Hoffman, M.D. and A. Gelman, Journal of Machine Learning Research 15, 1351-1381 (2014). <br/>
+
+Initial Mass Function Image by JohannesBuchner - Own work, CC BY-SA 4.0
 
 
      
