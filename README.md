@@ -946,3 +946,12 @@ def analyze_mass(galaxy):
 
 analyze_mass(galaxy_names[0])
 ```
+
+![scatter contour plot](DG_SPSv4_files/DG_SPSv4_22_2.png)
+
+![probability density](DG_SPSv4_files/DG_SPSv4_22_3.png)
+
+### (2.3b) Mass Comparison with RESOLVE
+We have computed the percent difference between `logmstar` in RESOLVE and our weighted median calculation for all galaxies. We see the largest difference is 17%, but this is in a small tail of the distribution (if centered on zero), suggesting good agreement with RESOLVE. Results for age and metallicity are also as expected. **For the fraction of binaries, \\(\alpha\\), we see a narrow band centered around 40%.** This is an encouraging result, as it has been estimated that up to 70% of stars may be participating in binary interactions. Therefore, these models suggest SPS models would better fit galaxy spectra with a significant fraction of binary stars.
+
+In exploring our data, we noticed that as the fraction of binary stars was increased, estimates for galaxy mass tended to increase as well. Eldridge and Stanway (2016) suggest supermassive binary black holes will only develop in very low metallicity environments. **While the weighted metallicity results are low in the range of these models, they are still too high to be strong candidates for these types of objects.**
