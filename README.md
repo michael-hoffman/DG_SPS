@@ -418,3 +418,209 @@ bpass_binary = pd.read_pickle('bpass_bin_mags.pkl')
 # Display data frame for binary models as example 
 bpass_binary.head()
 ```
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>IMF (0.1-0.5)</th>
+      <th>IMF (0.5-100)</th>
+      <th>IMF (100-300)</th>
+      <th>Metallicity</th>
+      <th>log(Age)</th>
+      <th>u</th>
+      <th>g</th>
+      <th>r</th>
+      <th>i</th>
+      <th>z</th>
+      <th>J</th>
+      <th>H</th>
+      <th>K</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>-1.3</td>
+      <td>-2.0</td>
+      <td>-2.0</td>
+      <td>0.001</td>
+      <td>6.0</td>
+      <td>-16.72410</td>
+      <td>-15.25659</td>
+      <td>-14.97677</td>
+      <td>-14.81755</td>
+      <td>-14.64745</td>
+      <td>-14.35990</td>
+      <td>-14.23688</td>
+      <td>-14.12323</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>-1.3</td>
+      <td>-2.0</td>
+      <td>-2.0</td>
+      <td>0.001</td>
+      <td>6.1</td>
+      <td>-16.89995</td>
+      <td>-15.43458</td>
+      <td>-15.15283</td>
+      <td>-14.99264</td>
+      <td>-14.82397</td>
+      <td>-14.54499</td>
+      <td>-14.42667</td>
+      <td>-14.31568</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>-1.3</td>
+      <td>-2.0</td>
+      <td>-2.0</td>
+      <td>0.001</td>
+      <td>6.2</td>
+      <td>-17.12357</td>
+      <td>-15.66747</td>
+      <td>-15.39094</td>
+      <td>-15.23271</td>
+      <td>-15.06762</td>
+      <td>-14.79439</td>
+      <td>-14.68084</td>
+      <td>-14.57534</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>-1.3</td>
+      <td>-2.0</td>
+      <td>-2.0</td>
+      <td>0.001</td>
+      <td>6.3</td>
+      <td>-17.60489</td>
+      <td>-16.40239</td>
+      <td>-16.45614</td>
+      <td>-16.59758</td>
+      <td>-16.69958</td>
+      <td>-16.89289</td>
+      <td>-17.24655</td>
+      <td>-17.36608</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>-1.3</td>
+      <td>-2.0</td>
+      <td>-2.0</td>
+      <td>0.001</td>
+      <td>6.4</td>
+      <td>-17.63741</td>
+      <td>-16.54304</td>
+      <td>-16.77804</td>
+      <td>-17.05414</td>
+      <td>-17.24676</td>
+      <td>-17.56112</td>
+      <td>-18.00511</td>
+      <td>-18.15740</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+# 2. Model Calculations
+
+For each model under consideration, we have *four* parameters that provide us with our model grid for BPASS:   
+
+- Age
+- Metallicity
+- IMF Slopes (proxy for \\(f_{MBBH}\\))
+- \\(\alpha\\) (binary fraction) : 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0
+    - We mix the BPASS models in a manner such that \\(\alpha\\) of our population is binary stars, while \\((1-\alpha)\\) 
+      is single stars. 
+
+```python
+# combine magnitudes based on alpha (binary fraction)
+def combine_mags(single,binary,alpha):
+    
+    single = np.array(single)
+    binary = np.array(binary)
+    return -2.5 * np.log10((alpha * 10**(-0.4*binary))+(1. - alpha) * (10**(-0.4*single))) 
+```
+
+Each combination of these parameters defines a unique model with a set of model magnitudes. We must first scale these values to put ourselves on the same footing as our RESOLVE galaxies, with the normalization providing an estimate of the galaxy mass. Before we do, however, we will discuss how we compute \\(f_{MMBH}\\). 
+
+## (2.1) Fraction of Massive Binary Black Holes
+
+The fundamental science question that we address in this project pertains to the fraction of massive binary black holes in dwarf galaxies (\\(f_{MBBH}\\)) that would be massive enough to emit gravitational waves that could be detected by Earth-based gravitational wave detectors. For each model, we can calculate this parameter using the BPASS initial mass functions and alpha parameter.
+
+We define the following piecewise function for the initial mass functions from BPASS:
+
+$$
+IMF(M_*) = 
+   \begin{cases} 
+      aM_* + C_1, & 0.1M_{\odot} \lt M_* \lt 0.5M_{\odot} \\
+      bM_* + C_2, & 0.5M_{\odot} \lt M_* \lt 100M_{\odot} \\
+      cM_* + C_3, & 100M_{\odot} \lt M_* \lt 300M_{\odot} 
+   \end{cases},
+$$
+
+where \\((a,b,c)\\) are the IMF slopes in the corresponding intervals (provided by BPASS) and \\((C_1,C_2,C_3)\\) are unknown constants.
+
+Making use of the mass normalization condition (all IMFs are normalized to \\(10^6 M_{\odot}\\)) and boundary conditions, we are able to solve for the unknown constants. Once the system is solved, we can integrate the first moment of the IMF from \\(90M_{\odot}\\) (progenitor cutoff is from Belczynski et al.) to \\(300M_{\odot}\\) in order to find the fraction of (potential) massive binary black holes in our binary star population. To find \\(f_{MBBH}\\) (which is the fraction of massive binary black holes in the *total* population), we merely multiply the result from evaluating the integral under the curve by the binary fraction, \\(\alpha\\).
+
+In summary, we walk away with \\(f_{MBBH}\\) for each unique combination of IMF slopes and alpha (70).
+
+```python
+"""
+Function to calculate fraction of massive progenitors in binaries. 
+Uses IMF slopes and alpha (binary fraction). The numerator is the integral 
+of the binary IMF integrated from 90 M_sun (massive progenitor cutoff from 
+Belczynski et. al. 2016) through 300 M_sun. The denominator is the 
+normalized mass of the model (10^6 M_sun). 
+"""
+def fbin_calc(alpha, a, b, c):
+    import scipy
+    
+    def intercept2(a, b, c):
+        return ((1./(0.5*(300.**2-0.1**2)))*(10**6 - (1./3.)*a*(0.5**3 - 0.1**3) - (1./3.)*b*(100**3 - 0.5**3) 
+               - (1./3.)*c*(300**3 - 100**3) - (b-a)*0.5*(0.5*(0.5**2-0.1**2)) - (b-c)*(100.0)*(0.5*(300**2-100**2))))
+    
+    def imf2(x):
+        return (b*x + yint2)*alpha
+        
+    def imf3(x):
+        return (c*x + yint3)*alpha
+
+    yint2 = intercept2(a, b, c)
+    yint1 = (b-a)*(0.5) + yint2
+    yint3 = (b-c)*(100.) + yint2
+    
+    a1 = float(scipy.integrate.quad(imf2, 90, 100)[0])
+    a2 = float(scipy.integrate.quad(imf3, 100, 300)[0])
+    
+    f_bin = (a1+a2)/(10.**6)
+    
+    return f_bin
+```
+
+## (2.2) Normalization and Chi-Squared
+- BPASS models are based on instantaneous formation of stars with a total mass of \\(10^6 M_{\odot}\\).
+- Since galaxies in RESOLVE contain far more mass than \\(10^6 M_{\odot}\\), we must normalize. To do so, we assume that the uncertainties on the model magnitudes are Poissonian when converted to fluxes, then perform the normalization in flux units (this is the natural linear scale for light output).
+
+```python
+# convert RESOLVE absolute mags to fluxes
+gfluxs = 10**(-0.4*gmags)
+
+# upper - lower bound on flux error
+hfluxs = 10**(-0.4*(gmags+errs))
+lfluxs = 10**(-0.4*(gmags-errs))
+errs = 0.5*(hfluxs - lfluxs)
+```
+
+We define the normalization to be the scale factor that minimizes \\({\chi}^2\\), where \\({x_i}\\) are the model fluxes, \\({d_i}\\) are the observed (RESOLVE) fluxes, \\({\epsilon_i}\\) are the observed (RESOLVE) uncertainties, and \\(i\\) is the band index. We display the result below:  
+
+$$c = \frac{\sum{\frac{x_i d_i}{\epsilon_i^2}}}{\sum{\frac{x_i^2}{\epsilon_i^2}}} $$  
+
+- After normalizing the model fluxes with this factor, we compute \\({\chi}^2\\) using normalized model magnitudes and observed magnitudes (with uncertainties) for each model.
+- We later use \\({\chi}^2\\) to determine the posterior probability of each model for a given galaxy.
+     
+
