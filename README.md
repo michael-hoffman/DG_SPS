@@ -828,3 +828,121 @@ bpass.head()
   </tbody>
 </table>
 </div>
+## (2.3) Galaxy-Specific Calculations
+
+With the models defined, we can compute from the normalizations an estimate for \\(M_*, \alpha \\), metallicity, and age for each galaxy. In order to compare to the RESOLVE mass for each galaxy, we compute the median (as done by previous works, Kannappan and Gawiser 2007) and the median weighted by the likelihood of each model (new approach?).
+
+### (2.3a) Computing the Model-Weighted Parameters for Each Galaxy
+
+
+```python
+input_df = pd.read_csv('output_three.csv')
+
+galaxy_names = np.unique(input_df['Name'])
+
+# Define the weighted mean function.
+def weighted_median(values, weights):
+    ''' 
+    Compute the weighted median of values list. 
+    The weighted median is computed as follows:
+    1- sort both lists (values and weights) based on values, then
+    2- select the 0.5 point from the weights and return the 
+       corresponding values as results.
+    e.g. values = [1, 3, 0] and weights=[0.1, 0.3, 0.6], assuming 
+         weights are probabilities.
+         sorted values = [0, 1, 3] and corresponding sorted 
+         weights = [0.6, 0.1, 0.3]. The 0.5 point on weight corresponds
+         to the first item which is 0., so the weighted median is 0.
+    '''
+
+    # convert the weights into probabilities
+    sum_weights = sum(weights)
+    weights = np.array([(w*1.0)/sum_weights for w in weights])
+    # sort values and weights based on values
+    values = np.array(values)
+    sorted_indices = np.argsort(values)
+    values_sorted  = values[sorted_indices]
+    weights_sorted = weights[sorted_indices]
+    # select the median point
+    it = np.nditer(weights_sorted, flags=['f_index'])
+    accumulative_probability = 0
+    median_index = -1
+    while not it.finished:
+        accumulative_probability += it[0]
+        if accumulative_probability > 0.5:
+            median_index = it.index
+            return values_sorted[median_index]
+        elif accumulative_probability == 0.5:
+            median_index = it.index
+            it.iternext()
+            next_median_index = it.index
+            return np.mean(values_sorted[[median_index, next_median_index]])
+        it.iternext()
+
+    return values_sorted[median_index]
+
+# define galaxy independent variables
+range_z = 0.04-0.001
+range_logA = 10.0-6.0
+priors = range_z**-1*range_logA**-1
+dpz = range_z/11.0
+dplA = range_logA/41.0
+ages = np.array(input_df[ (input_df['Name'] == galaxy_names[0]) ]['log(Age)'])
+Zs = np.array(input_df[ (input_df['Name'] == galaxy_names[0]) ]['Metallicity'])
+alphas = np.array(input_df[ (input_df['Name'] == galaxy_names[0]) ]['Alpha'])
+
+output_columns = ['Name', 'walpha', 'wage', 'wZ','median', 'wmean', 'wmedian','logmstar',
+                  'diff', '%diff']
+
+def analyze_mass(galaxy):
+    """
+    :param galaxy: name of galaxy from input_df
+    :return: output_list
+    """
+    norms = np.array(input_df[ (input_df['Name'] == galaxy) ]['Normalization'])
+    chis = np.array(input_df[ (input_df['Name'] == galaxy) ]['Chi^2'])
+    # implement a scale factor for better numerical results. Same accros all galaxies
+    chis = chis/10.0
+    lnprobs = -0.5*chis + np.log(priors)
+    probs = np.exp(lnprobs)
+    logmstar = np.array(resolve[(resolve['name'] == galaxy)]['logmstar'])[0]
+    ratios = norms
+    logmass = np.log10(ratios*10**6)
+
+    # calculate weighted values
+    wmean = np.sum(np.exp(-chis*0.5)*logmass)/np.sum(np.exp(-chis*0.5))
+    wmedian = weighted_median(logmass, probs/np.sum(probs))
+    walpha = np.sum(np.exp(-chis*0.5)*alphas)/np.sum(np.exp(-chis*0.5))
+    wage = np.sum(np.exp(-chis*0.5)*ages)/np.sum(np.exp(-chis*0.5))
+    wZ = np.sum(np.exp(-chis*0.5)*Zs)/np.sum(np.exp(-chis*0.5))
+
+    # generate output line
+    output_list = [galaxy,walpha,wage,wZ,np.median(logmass),wmean,wmedian,
+                   logmstar,logmstar-wmedian,((logmstar-wmedian)/logmstar)*100.0]
+    
+    print(output_columns)
+    
+    # output mass - probability plot
+    fig, ax = plt.subplots(figsize=(8, 6))
+    scatter_contour(logmass, probs, threshold=200, log_counts=True, ax=ax,
+                    histogram2d_args=dict(bins=40),
+                    plot_args=dict(marker=',', linestyle='none', color='black'),
+                    contour_args=dict(cmap=plt.cm.bone))
+
+    ax.set_xlabel(r'${\log M_*/M_{\odot}}$')
+    ax.set_ylabel(r'${P(M)}$')
+    
+    # output alpha - probability plot
+    fig, ax = plt.subplots(figsize=(8, 6))
+    scatter_contour(alphas, probs, threshold=20, log_counts=False, ax=ax,
+                histogram2d_args=dict(bins=40),
+                plot_args=dict(marker=',', linestyle='none', color='black'),
+                contour_args=dict(cmap=plt.cm.bone))
+
+    ax.set_xlabel(r'${\alpha}$')
+    ax.set_ylabel(r'${P(M)}$')
+    
+    return output_list
+
+analyze_mass(galaxy_names[0])
+```
