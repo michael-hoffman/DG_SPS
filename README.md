@@ -1225,3 +1225,7 @@ Up until this point, we have not performed any calculations that require any sor
 - Alpha: We impose a uniform prior on `alpha`, spanning the range of binary fractions that we test. 
     - Note: Since this is just one, we do not include it explicitly below. 
 
+Our prior distribution is given below, where \\({\theta}_i\\) represents our set of model parameters. 
+
+$$p\left({\theta}_i\right) = \frac{1}{\textrm{log(age) range}} \frac{1}{\textrm{metallicity range}}$$
+
