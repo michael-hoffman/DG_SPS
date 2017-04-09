@@ -1235,8 +1235,8 @@ $$p\left({\theta}_i\right) = \frac{1}{\textrm{log(age) range}} \frac{1}{\textrm{
 
 We believe our problem motivates the use of a likelihood function that depends on the chi-squared distribution, as discussed previously. Therefore, our likelihood function is of the form:
 
-$$L\left( f_{\textrm{B},i}, f_{\textrm{R},i}, {\sigma}_{\textrm{R},i} \right) = e^{-{\chi}^2 / 2}$$ 
+$$L\left( f_{\textrm{B},i}, f_{\textrm{R},i}, \sigma_{\textrm{R},i} \right) = e^{-{\chi}^2 / 2}$$ 
 
-$${\chi}^2 = \sum \frac{\left(f_{\textrm{R},i} - f_{\textrm{B},i}\right)^2}{{{\sigma}_{\textrm{R},i}}^2},$$ 
+$${\chi}^2 = \sum \frac{\left(f_{\textrm{R},i} - f_{\textrm{B},i}\right)^2}{{\sigma_{\textrm{R},i}}^2}$$ 
 
-where $f_{\textrm{B},i}$ are the normalized BPASS fluxes, $f_{\textrm{R},i}$ are the RESOLVE fluxes, and ${\sigma}_{\textrm{R},i}$ are the RESOLVE flux uncertainties.
+where \\(f_{\textrm{B},i}\\) are the normalized BPASS fluxes, \\(f_{\textrm{R},i}\\) are the RESOLVE fluxes, and \\(\sigma_{\textrm{R},i}\\) are the RESOLVE flux uncertainties.
