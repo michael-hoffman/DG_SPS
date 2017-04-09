@@ -328,7 +328,7 @@ BPASS is a stellar population synthesis (SPS) modeling code that models stellar 
 2. Binary star populations are not merged with single star populations - you have to mix the two on your own.  
     * We will be mixing binary and single star populations in varying proportions.
 
-We read in all of the data from the BPASS models and store it as a pandas DataFrame. <br/>
+We read in all of the data from the BPASS models and store it as a pandas DataFrame.  
 
 ### (1.2a) Model Parameters
 
@@ -1235,7 +1235,7 @@ $$p\left({\theta}_i\right) = \frac{1}{\textrm{log(age) range}} \frac{1}{\textrm{
 
 We believe our problem motivates the use of a likelihood function that depends on the chi-squared distribution, as discussed previously. Therefore, our likelihood function is of the form:
 
-$$L\left( f_{\textrm{B},i}, f_{\textrm{R},i}, {\sigma}_{\textrm{R},i} \right) = e^{-{\chi}^2 / 2}$$ <br/>
+$$L\left( f_{\textrm{B},i}, f_{\textrm{R},i}, {\sigma}_{\textrm{R},i} \right) = e^{-{\chi}^2 / 2}$$ 
 
 $${\chi}^2 = \sum \frac{\left(f_{\textrm{R},i} - f_{\textrm{B},i}\right)^2}{{{\sigma}_{\textrm{R},i}}^2},$$ 
 
