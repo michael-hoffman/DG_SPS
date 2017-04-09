@@ -955,3 +955,152 @@ analyze_mass(galaxy_names[0])
 We have computed the percent difference between `logmstar` in RESOLVE and our weighted median calculation for all galaxies. We see the largest difference is 17%, but this is in a small tail of the distribution (if centered on zero), suggesting good agreement with RESOLVE. Results for age and metallicity are also as expected. **For the fraction of binaries, \\(\alpha\\), we see a narrow band centered around 40%.** This is an encouraging result, as it has been estimated that up to 70% of stars may be participating in binary interactions. Therefore, these models suggest SPS models would better fit galaxy spectra with a significant fraction of binary stars.
 
 In exploring our data, we noticed that as the fraction of binary stars was increased, estimates for galaxy mass tended to increase as well. Eldridge and Stanway (2016) suggest supermassive binary black holes will only develop in very low metallicity environments. **While the weighted metallicity results are low in the range of these models, they are still too high to be strong candidates for these types of objects.**
+```python
+# load input data frame for each galaxy
+massframe = pd.read_csv('galaxy_analysis.csv')
+
+# extract interesting values to numpy arrays for graphing
+masses = np.array(massframe['wmedian'])[:, np.newaxis]
+resolve_masses = np.array(massframe['logmstar'])
+diffs = np.array(massframe['%diff'])
+walphas = np.array(massframe['walpha'])
+wages = np.array(massframe['wage'])
+wZs = np.array(massframe['wZ'])
+
+# worst prediction
+print('Largest percent difference in mass: %2.2f' %np.max(massframe['%diff']))
+
+# distribution of differences with RESOLVE
+plt.figure(figsize=(10, 6))
+counts, bins, patches = hist(diffs, bins='knuth', color='orange', histtype='stepfilled', normed=False, alpha=0.5)
+plt.xlabel("Percent Difference")
+plt.ylabel("Number of Galaxies")
+plt.title('Percent Difference in Mass between RESOLVE and BPASS Model')
+#plt.show()
+
+# distribution of weighted alphas
+plt.figure(figsize=(10, 6))
+counts, bins, patches = hist(walphas, bins='knuth', color='orange', histtype='stepfilled', normed=False, alpha=0.5)
+plt.xlabel("Binary Fraction")
+plt.ylabel("Number of Galaxies")
+plt.title('Distribution of the Weighted Mean of Binary Fraction for All Dwarfs in RESOLVE')
+#plt.show()
+
+# distribution of weighted ages
+plt.figure(figsize=(10, 6))
+counts, bins, patches = hist(wages, bins='knuth', color='orange', histtype='stepfilled', normed=False, alpha=0.5)
+plt.xlabel("log(Age) [Yr]")
+plt.ylabel("Number of Galaxies")
+plt.title('Distribution of the Weighted Mean of Age for All Dwarfs in RESOLVE')
+#plt.show()
+
+# distribution of weighted metallicities
+plt.figure(figsize=(10, 6))
+counts, bins, patches = hist(wZs, bins='knuth', color='orange', histtype='stepfilled', normed=False, alpha=0.5)
+plt.xlabel("Metallicity")
+plt.ylabel("Number of Galaxies")
+plt.title('Distribution of the Weighted Mean of Metallicity for All Dwarfs in RESOLVE')
+#plt.show()
+```
+
+    Largest percent difference in mass: 17.30
+
+
+![png](DG_SPSv4_files/DG_SPSv4_24_2.png)
+
+
+
+![png](DG_SPSv4_files/DG_SPSv4_24_3.png)
+
+
+
+![png](DG_SPSv4_files/DG_SPSv4_24_4.png)
+
+
+
+![png](DG_SPSv4_files/DG_SPSv4_24_5.png)
+
+
+### (2.3c) Cross-Validation and the Stellar Mass Function
+
+We have computed the stellar mass function of the dwarf galaxies in RESOLVE using Kernel Density Estimation. The bandwidth of the kernel was determined using k-fold cross-validation with k=15.
+
+```python
+# Perform k-fold cross-validation
+mass_arr = masses[:,0]
+np.random.shuffle(mass_arr)
+mass_arr = mass_arr[:1650]
+
+# determine Knuth's optimal bin size for the entire data set
+knuthBinWidth = astropy.stats.knuth_bin_width(mass_arr)
+print('The Knuth optimal bin width is: %f' % knuthBinWidth)
+bandwidths = np.arange(0.4 * knuthBinWidth, 3.0 * knuthBinWidth, 0.01)
+
+# split the data into 15 subsets
+num_splits = 15
+optimum_widths = np.zeros(num_splits)
+kfold_arr = np.split(mass_arr, num_splits)
+
+for run in range(num_splits):
+    mask = np.ones(num_splits, dtype=bool)
+    mask[run] = False
+    test_data = kfold_arr[run]
+    train_data = np.delete(kfold_arr, run, axis=0).flatten()
+
+    logLs = np.zeros(bandwidths.size)
+    for j, bandwidth in enumerate(bandwidths):
+        # KDE
+        kde = KernelDensity(kernel='gaussian', bandwidth=bandwidth).fit(train_data[:, np.newaxis])
+        logLs[j] = kde.score(test_data[:, np.newaxis])
+        optimum_widths[run] = bandwidths[np.argmax(logLs)]
+
+widths = np.unique(optimum_widths)
+
+print('------------RESULTS----------------------')
+print('The median value of bandwidths is: %f' % np.median(optimum_widths))
+print('The mean value of bandwidths is: %f' % np.mean(optimum_widths))
+print('The std dev of bandwidths is: %f' % np.std(optimum_widths, ddof=1))
+plt.figure(figsize=(10, 6))
+counts, bins, patches = hist(optimum_widths, bins='knuth', color='orange', 
+                             histtype='stepfilled', normed=False, alpha=0.5)
+plt.xlabel("Optimum Bandwidth")
+plt.ylabel("Frequency")
+plt.title('Optimum Bandwidths from k-fold Cross-Validation (k=15)')
+#plt.show()
+
+# choose KDE bandwidth with k-fold median
+kde = KernelDensity(kernel='gaussian', bandwidth=np.mean(widths)).fit(masses)
+mass_plot = np.linspace(7.0,10,len(masses))[:, np.newaxis]
+log_dens = kde.score_samples(mass_plot)
+f = np.exp(log_dens)
+
+plt.figure(figsize=(10, 6))
+counts, bins, patches = hist(masses[:,0], bins='knuth', color='orange', histtype='stepfilled', 
+                             label='DG SPS Model',normed=True, alpha=0.5)
+counts, bins, patches = hist(resolve_masses, bins='knuth', color='purple', histtype='stepfilled', 
+                             label='RESOLVE',normed=True, alpha=0.5)
+plt.xlabel("log($M_{*}/M_{\odot}$)")
+plt.ylabel("Normalized Number of Galaxies")
+plt.legend(loc=2)
+plt.title('Stellar Mass Function for Dwarf Galaxies in RESOLVE')
+plt.plot(mass_plot[:,0], f, '-')
+#plt.show()
+```
+
+	The Knuth optimal bin width is: 0.087364
+    ------------RESULTS----------------------
+    The median value of bandwidths is: 0.074946
+    The mean value of bandwidths is: 0.099612
+    The std dev of bandwidths is: 0.079988
+    
+    
+![png](DG_SPSv4_files/DG_SPSv4_26_2.png)
+
+
+
+![png](DG_SPSv4_files/DG_SPSv4_26_3.png)
+
+
+### (2.3d) Galaxy Parameters as a Function of Binary Fraction
+
+To further investigate our fundamental question, we explored how our galaxy parameters behave as a function of the binary fraction (as opposed to \\(f_{MBBH}\\)). To do so, we chose three dwarf galaxies with different mass estimates from RESOLVE to capture what we felt was a representative (albeit small) picture of how our code runs for the entire sample.  
