@@ -1104,6 +1104,7 @@ plt.plot(mass_plot[:,0], f, '-')
 ### (2.3d) Galaxy Parameters as a Function of Binary Fraction
 
 To further investigate our fundamental question, we explored how our galaxy parameters behave as a function of the binary fraction (as opposed to \\(f_{MBBH}\\)). To do so, we chose three dwarf galaxies with different mass estimates from RESOLVE to capture what we felt was a representative (albeit small) picture of how our code runs for the entire sample.  
+
 ```python
 # Load data for three galaxies.
 df = pd.read_csv('output_three.csv')
