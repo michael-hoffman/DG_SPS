@@ -620,3 +620,7 @@ We define the normalization to be the scale factor that minimizes \\({\chi}^2\\)
 
 $$c = \frac{\sum{\frac{x_i d_i}{\epsilon_i^2}}}{\sum{\frac{x_i^2}{\epsilon_i^2}}} $$  
 
+- After normalizing the model fluxes with this factor, we compute \\({\chi}^2\\) using normalized model magnitudes and observed magnitudes (with uncertainties) for each model.
+- We later use \\({\chi}^2\\) to determine the posterior probability of each model for a given galaxy.
+
+*The code for carrying out this process takes a bit of a long time to run, so we have extracted another block of code from our pipeline to demonstrate how we compute normalizations and \\({\chi}^2\\) values.* 
