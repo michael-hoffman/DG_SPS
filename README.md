@@ -624,3 +624,121 @@ $$c = \frac{\sum{\frac{x_i d_i}{\epsilon_i^2}}}{\sum{\frac{x_i^2}{\epsilon_i^2}}
 - We later use \\({\chi}^2\\) to determine the posterior probability of each model for a given galaxy.
 
 *The code for carrying out this process takes a bit of a long time to run, so we have extracted another block of code from our pipeline to demonstrate how we compute normalizations and \\({\chi}^2\\) values.* 
+
+```python
+# store useful strings in arrays for later
+rmag_list = ['umag','gmag','rmag','imag','zmag','2jmag','2hmag','2kmag']
+emag_list = ['e_umag','e_gmag','e_rmag','e_imag','e_zmag','e_2jmag','e_2hmag','e_2kmag']
+bmag_list = ['u','g','r','i','z','J','H','K']
+
+# compute interesting values for one galaxy
+# parallelize at the individual galaxy level
+numProcs = multiprocessing.cpu_count()
+
+def out_calc(gal):
+    # determine all the galaxy level variables
+    # a few galaxies throw errors due to missing data
+    # skip those with try - except statement
+    try:
+        # set scope of output_arr
+        output_arr = []
+        # extract error values from RESOLVE
+        errs =[]
+        for eband in emag_list:
+            # only add good values to list
+            if (gal[eband] != -99.0):
+                errs.append(gal[eband])
+        num_good_values = len(errs)
+
+        # add 0.1 mag to all errors Kannappan (2007)
+        errs = np.array(np.sqrt(np.array(errs)**2 + 0.1**2))
+
+        # extract apparent RESOLVE magnitudes
+        gmags = []
+        for gband in rmag_list:
+            # only add good values to list
+            if (gal[gband] != -99.0):
+                gmags.append(gal[gband])
+        gmags = np.array(gmags)
+
+        # distance to galaxy (grcz over cz due to additional corrections)
+        distance = gal['grpcz'] / (70. / 10**6)
+
+        # convert RESOLVE apparent magnitudes to absolute magnitudes
+        gal_abs_mags = gmags - 5.0*np.log10(distance/10.0)
+        gmags = gal_abs_mags
+
+        # convert RESOLVE absolute mags to fluxes
+        gfluxs = 10**(-0.4*gmags)
+
+        # upper - lower bound on flux error
+        hfluxs = 10**(-0.4*(gmags+errs))
+        lfluxs = 10**(-0.4*(gmags-errs))
+        errs = 0.5*(hfluxs - lfluxs)
+
+        # loop over binary fraction
+        for alpha in np.arange(0.0, 1.1, .1):
+            # list of absolute magnitude vectors
+            mags = combine_mags(bpass_single[bmag_list[:num_good_values]], bpass_binary[bmag_list
+                               [:num_good_values]],alpha)
+            # set arrays for normilaztion and chi-square
+            norms = np.zeros(len(mags))
+            chi2 = np.zeros(len(mags))
+            for k, mmags in enumerate(mags):
+                # select mag vector for model and convert model mags to fluxes
+                mfluxes = 10**(-0.4*mmags)
+                # compute norm and chi-square
+                norms[k] = np.sum((gfluxs*mfluxes)/errs**2)/np.sum((mfluxes/errs)**2)
+                chi2[k] = np.sum((gfluxs-norms[k]*mfluxes)**2/errs**2)/num_good_values
+
+                # extract model information (to be used later)
+                imf1 = bpass_single.iloc[k]['IMF (0.1-0.5)']
+                imf2 = bpass_single.iloc[k]['IMF (0.5-100)']
+                imf3 = bpass_single.iloc[k]['IMF (100-300)']
+                age = bpass_single.iloc[k]['log(Age)']
+                metallicity = bpass_single.iloc[k]['Metallicity']
+                output_list = [gal['name'], imf1, imf2, imf3, age, metallicity, alpha, norms[k],          
+                               chi2[k],num_good_values]
+                output_arr.append(output_list)
+        print(output_list)
+    except:
+        print('A problem occured for %s' %gal['name'])
+
+    return output_arr
+
+pool = multiprocessing.Pool(numProcs-1)
+# generate list of all dwarfs in RESOLVE for calculation
+gal_list = [gal for index, gal in resolve.iterrows()]
+output = pool.map(out_calc, gal_list)
+# the output will be a list of lists of lists ordered by galaxy. Flatten to one giant list of lists
+# each list is a model
+merged = list(itertools.chain.from_iterable(output))
+# convert to a dataframe for saving
+df = pd.DataFrame(merged, columns = output_columns)
+df.to_csv('all_output.csv', index=False)
+```
+
+
+```python
+# Load in data for a couple of galaxies of choice. 
+bpass = pd.read_csv('output_three.csv')
+#
+'''
+# UNCOMMENT IF YOU WISH TO CALCULATE F_MBBH MANUALLY.
+
+# Initialize array to store f_{MBBH} for each model.
+fmbbh = np.zeros(len(bpass.index))
+
+# Add a column to the data frame for f_{MBBH}. 
+for index, row in bpass.iterrows():
+    imf1 = row['IMF (0.1-0.5)']
+    imf2 = row['IMF (0.5-100)']
+    imf3 = row['IMF (100-300)']
+    alpha_gal = row['Alpha']
+    fmbbh[index] = fbin_calc(alpha_gal, imf1, imf2, imf3) 
+
+bpass['f_{MBBH}'] = fmbbh
+'''
+
+bpass.head()
+```
