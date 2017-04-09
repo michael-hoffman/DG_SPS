@@ -1,11 +1,10 @@
 <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML" type="text/javascript"></script>
-[back to main page] (https://michael-hoffman.github.io)
+
+[back to main page](https://michael-hoffman.github.io)
 # Bayesian Model Evaluation and Comparison
 ## SPS Modeling of Compact Dwarf Galaxies
-
 ### Michael Hoffman, Charlie Bonfield, Patrick O'Brien
 
-### ASTR 703: Galastrostats
 
 ## Introduction
 
@@ -294,3 +293,57 @@ print 'Number of galaxies in RESOLVE matching our dwarf galaxy criterion: ', res
 
     Number of galaxies in RESOLVE matching our dwarf galaxy criterion:  1657
 
+Missing photometric data in RESOLVE is indicated by `-99`. Since we do not wish to include these values in our subsequent data analysis, we treat them by ignoring all instances of `-99`. We also exclude data from these bands when comparing to our BPASS model fluxes.
+
+*We perform this process externally, but the relevant code has been extracted from our pipeline and is shown below.*  
+
+```python
+errs =[]
+    for eband in emag_list:
+        if (gal[eband] != -99.0):
+            errs.append(gal[eband])
+    num_good_values = len(errs)
+
+    # add 0.1 mag to all errors Kannappan (2007)
+    errs = np.array(np.sqrt(np.array(errs)**2 + 0.1**2))
+
+    gmags = []
+    for gband in rmag_list:
+        if (gal[gband] != -99.0):
+            gmags.append(gal[gband])
+gmags = np.array(gmags)
+```
+## (1.2) BPASS (Binary Population and Spectral Synthesis Code) Data  
+
+BPASS is a stellar population synthesis (SPS) modeling code that models stellar populations that include binary stars.   This is a unique endeavor in that most SPS codes do not include binary star evolution, and it makes BPASS well-suited for our hunt for massive binaries in RESOLVE dwarf galaxies.
+
+**Advantages:  **
+1. Includes data for separate SPS models for populations of single and binary star populations.  
+2. Data files are freely available and well-organized.  
+3. Both spectral energy distributions (SEDs) and broadband magnitudes are available. 
+
+**Disadvantages:  **
+1. Cannot provide any input to the code - you are stuck with the provided IMF slopes, ages, and metallicities.  
+    * In the context of our project, this means that our model grid has already been defined.  
+2. Binary star populations are not merged with single star populations - you have to mix the two on your own.  
+    * We will be mixing binary and single star populations in varying proportions.
+
+We read in all of the data from the BPASS models and store it as a pandas DataFrame. <br/>
+
+### (1.2a) Model Parameters
+
+We have three parameters from BPASS that characterize each model:
+
+- Age: 1 Myr (\\(10^6\\) years) to 10 Gyr (\\(10^{10}\\) years) on a logarithmic scale
+    - Stored as `log(Age)`, ranging from 6.0 to 10.0.
+- Metallicity: \\(Z = 0.001, 0.002, 0.003, 0.004, 0.006, 0.008, 0.010, 0.014, 0.020, 0.030, 0.040\\)
+    - Stored as: `Metallicity`
+- IMF Slopes (for ranges of \\(M_{*}\\) in units of \\(M_{\odot}\\)):  
+    - \\(0.1 < M_{\textrm{galaxy}} < 0.5\\): -1.30, -2.35
+        - Stored as: `IMF (0.1-0.5)`
+    - \\(0.5 < M_{\textrm{galaxy}} < 100\\): -2.0, -2.35, -2.70
+        - Stored as: `IMF (0.5-100)`
+    - \\(100 < M_{\textrm{galaxy}} < 300\\): 0.0, -2.0, -2.35, -2.70 
+        - Stored as: `IMF (100-300)`
+                
+We will also be calculating a fourth parameter, \\(f_{MBBH}\\), to go along with each model, which we will discuss in further detail below. 
